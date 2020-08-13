@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <curl/curl.h>
+#include <json.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +38,25 @@ int main(){
   assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies"));
   assert(CURLE_OK==curl_easy_perform(curl));
 
-  printf("%.*s\n",(int)sz,buf);
+  // printf("%.*s\n",(int)sz,buf);
+  assert(NULL!=(buf=realloc(buf,++sz)));
+  buf[sz-1]='\0';
+  // printf("%s\n",buf);
+
+  json_tokener *tok=json_tokener_new();
+  assert(tok);
+  json_object *jobj=json_tokener_parse_ex(tok,buf,-1);
+  enum json_tokener_error jerr=json_tokener_get_error(tok);
+  printf("%s\n",json_tokener_error_desc(jerr));
+  assert(jerr==json_tokener_success);
+  json_tokener_free(tok);
+  tok=NULL;
+
+  // printf("%s\n",json_object_to_json_string_ext(jobj,JSON_C_TO_STRING_PLAIN));
+  // printf("%s\n",json_object_to_json_string_ext(jobj,JSON_C_TO_STRING_PLAIN|JSON_C_TO_STRING_SPACED));
+  // printf("%s\n",json_object_to_json_string_ext(jobj,JSON_C_TO_STRING_PRETTY));
+
+  assert(1==json_object_put(jobj));
   free(buf);
   buf=NULL;
   sz=0;
