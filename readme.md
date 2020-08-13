@@ -7,6 +7,13 @@ Clash
 libcurl
 *  https://curl.haxx.se/libcurl/c/SOME_FUNCTION.html
 
+According to [redsocks](https://github.com/darkk/redsocks/blob/master/README.md)
+>Probably, the better way is to use on-device VPN daemon to intercept
+traffic via [`VpnService` API for Android](https://developer.android.com/reference/android/net/VpnService.html)
+and [`NETunnelProvider` family of APIs for iOS](https://developer.apple.com/documentation/networkextension).
+That may require some code doing [TCP Reassembly](https://wiki.wireshark.org/TCP_Reassembly)
+like [`tun2socks`](https://github.com/ambrop72/badvpn/wiki/Tun2socks).
+
 tun2socks
 * [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
 
