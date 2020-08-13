@@ -3,27 +3,13 @@
 #include <json.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
 char *buf=NULL;
 size_t sz=0;
-
-size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata){
-
-  assert(size==1);
-  assert(nmemb>=1);
-
-  // eprintf("new segment\n");
-
-  assert(NULL!=(buf=realloc(buf,sz+nmemb)));
-  memcpy(buf+sz,ptr,nmemb);
-  sz+=nmemb;
-
-  return nmemb;
-
-}
 
 void assert_field(const json_object *const j,const char *const k,const char *const v){
   json_object *p=NULL;
@@ -43,25 +29,62 @@ const char *get_field(const json_object *const j,const char *const k){
   return json_object_get_string(p);
 }
 
-int main(){
+size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata){
+  assert(size==1);
+  assert(nmemb>=1);
+  // eprintf("new segment\n");
+  assert(NULL!=(buf=realloc(buf,sz+nmemb)));
+  memcpy(buf+sz,ptr,nmemb);
+  sz+=nmemb;
+  return nmemb;
+}
 
-  // printf("%s\n",curl_version());
-  // assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
+void buf_http_get(const char *const url){
 
   CURL *curl=curl_easy_init();
   assert(curl);
 
+  // char *encode=curl_easy_escape(curl,"http://127.0.0.1:6170/proxies/香港标准 IEPL 中继 19",0);
+  // curl_easy_reset(curl);
+  // printf("%s\n",encode);
+  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,encode));
+  assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,url));
+  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies/香港标准%20IEPL%20中继%2019"));
+  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/configs"));
+  // curl_free(encode);
+  // encode=NULL;
+
   assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_WRITEFUNCTION,write_callback));
   assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_HEADER,0L));
-  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies"));
-  assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies/GLOBAL"));
-  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies/JP"));
-  // assert(CURLE_OK==curl_easy_setopt(curl,CURLOPT_URL,"http://127.0.0.1:6170/proxies/香港标准 IEPL 中继 19"));
-  assert(CURLE_OK==curl_easy_perform(curl));
+  const CURLcode errornum=curl_easy_perform(curl);
+  if(errornum!=CURLE_OK){
+    eprintf("%s\n",curl_easy_strerror(errornum));
+    assert(false);
+  }
+
+  curl_easy_cleanup(curl);
+  curl=NULL;
+
   // printf("%.*s\n",(int)sz,buf);
   assert(NULL!=(buf=realloc(buf,++sz)));
   buf[sz-1]='\0';
+
   // printf("%s\n",buf);
+
+}
+
+void buf_drop(){
+  free(buf);
+  buf=NULL;
+  sz=0;
+}
+
+int main(){
+
+  // printf("%s\n",curl_version());
+  assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
+
+  buf_http_get("http://127.0.0.1:6170/proxies/GLOBAL");
 
   json_tokener *tok=json_tokener_new();
   assert(tok);
@@ -81,11 +104,9 @@ int main(){
 
   assert(1==json_object_put(jobj));
   jobj=NULL;
-  free(buf);
-  buf=NULL;
-  sz=0;
-  curl_easy_cleanup(curl);
-  curl=NULL;
+
+  buf_drop();
+
   curl_global_cleanup();
 
   return 0;
