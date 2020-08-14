@@ -7,12 +7,20 @@ Clash
 libcurl
 *  https://curl.haxx.se/libcurl/c/SOME_FUNCTION.html
 
+[python percent encode $1](https://unix.stackexchange.com/questions/159253/decoding-url-encoding-percent-encoding)
+
+json-c
+  * [synopsis](https://github.com/json-c/json-c#using-json-c-)
+  * [doc](http://json-c.github.io/json-c/json-c-current-release/doc/html/index.html)
+
 According to [redsocks](https://github.com/darkk/redsocks/blob/master/README.md)
 >Probably, the better way is to use on-device VPN daemon to intercept
 traffic via [`VpnService` API for Android](https://developer.android.com/reference/android/net/VpnService.html)
 and [`NETunnelProvider` family of APIs for iOS](https://developer.apple.com/documentation/networkextension).
 That may require some code doing [TCP Reassembly](https://wiki.wireshark.org/TCP_Reassembly)
 like [`tun2socks`](https://github.com/ambrop72/badvpn/wiki/Tun2socks).
+
+[tproxy](https://www.kernel.org/doc/html/latest/networking/tproxy.html)
 
 tun2socks
 * [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
