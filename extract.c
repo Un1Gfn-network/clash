@@ -92,7 +92,7 @@ static inline void assert_key_assert_val(const char *const k,const char *const v
   assert(0==scalarcmp(v));
 }
 
-static inline void assert_key_print_val(const char *const k){
+static inline char *assert_key_get_val(const char *const k){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
@@ -102,11 +102,13 @@ static inline void assert_key_print_val(const char *const k){
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
   // strcpy(v,(const char*)(token.data.scalar.value));
-  eprintf("%s\n",(const char*)(token.data.scalar.value));
+  // eprintf("%s\n",(const char*)(token.data.scalar.value));
+  char *ret=strdup((const char*)(token.data.scalar.value));
   DEL();
+  return ret;
 }
 
-void extract_server(const char *const filename,const char *const s){
+char *extract(const char *const filename,const char *const s){
 
   // Init
   yaml_parser_initialize(&parser);
@@ -173,7 +175,7 @@ void extract_server(const char *const filename,const char *const s){
   }
 
   assert_key_assert_val("type","ss");
-  assert_key_print_val("server");
+  char *ret=assert_key_get_val("server");
   assert_key_ignore_val("port");
   assert_key_ignore_val("cipher");
   assert_key_ignore_val("password");
@@ -185,6 +187,8 @@ void extract_server(const char *const filename,const char *const s){
   parser=(yaml_parser_t){};
   fclose(f);
   f=NULL;
+
+  return ret;
 
 }
 

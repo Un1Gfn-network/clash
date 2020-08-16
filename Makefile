@@ -10,10 +10,13 @@ LIBS+=$(shell curl-config --libs) $(shell pkg-config --libs json-c)
 yaml.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1)
 LIBS+=$(shell pkg-config --libs yaml-0.1)
 
+# test.out:test.c
+# 	$(CC) $(CFLAGS) -o $@ $<
+
 %.o: %.c
 	$(CC) -c $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $<
 
-clash_tun.out:main.o yaml.o
+clash_tun.out:main.o extract.o resolv.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 clean:

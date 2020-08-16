@@ -13,7 +13,9 @@ static size_t sz=0;
 static json_tokener *tok=NULL;
 
 // yaml.c
-extern void extract_server(const char *const,const char *const);
+extern char *extract(const char *const,const char *const);
+// resolv.c
+extern char *resolv(const char *);
 
 static inline void assert_field(const json_object *const j,const char *const k,const char *const v){
   json_object *p=NULL;
@@ -166,7 +168,7 @@ int main(const int argc,const char **argv){
     exit(1);
   }
 
-  assert(argv[1]); // "/home/darren/.clash/rixcloud/config.yaml"
+  assert(argv[1]);
 
   // printf("%s\n",curl_version());
   assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
@@ -180,7 +182,7 @@ int main(const int argc,const char **argv){
   // printf("%d\n",local_port());
 
   char *name=name_now();
-  // printf("%s\n",name);
+  printf("%s\n",name);
 
   const char *l="/home/darren/.clash/";
   const char *r="/config.yaml";
@@ -191,7 +193,17 @@ int main(const int argc,const char **argv){
   strcat(filename,argv[1]);
   strcat(filename,r);
   // eprintf("%s\n",filename);
-  extract_server(filename,name);
+  char *domain=extract(filename,name);
+  assert(domain);
+  printf("%s\n",domain);
+
+  char *ip=resolv(domain);
+  assert(ip);
+  printf("%s\n",ip);
+
+  free(ip);
+  free(domain);
+  ip=domain=NULL;
 
   free(name);
   name=NULL;

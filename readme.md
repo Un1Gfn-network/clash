@@ -1,3 +1,5 @@
+[Add UDP forwarding w/ badvpn-udpgw](https://github.com/ambrop72/badvpn/wiki/Tun2socks#udp-forwarding)
+
 Clash
 * [config.yaml](https://lancellc.gitbook.io/clash/)
 * external controller API
