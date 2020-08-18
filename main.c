@@ -14,8 +14,6 @@ static json_tokener *tok=NULL;
 
 // yaml.c
 extern char *extract(const char *const,const char *const);
-// resolv.c
-extern char *resolv(const char *);
 
 static inline void assert_field(const json_object *const j,const char *const k,const char *const v){
   json_object *p=NULL;
@@ -193,17 +191,7 @@ int main(const int argc,const char **argv){
   strcat(filename,argv[1]);
   strcat(filename,r);
   // eprintf("%s\n",filename);
-  char *domain=extract(filename,name);
-  assert(domain);
-  printf("%s\n",domain);
-
-  char *ip=resolv(domain);
-  assert(ip);
-  printf("%s\n",ip);
-
-  free(ip);
-  free(domain);
-  ip=domain=NULL;
+  extract(filename,name);
 
   free(name);
   name=NULL;

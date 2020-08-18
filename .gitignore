@@ -1,5 +1,3 @@
 *.out
 *.o
 /libyaml/
-
-/private.md

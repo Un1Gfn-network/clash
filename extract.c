@@ -1,8 +1,11 @@
 #include <assert.h>
+#include <json.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <yaml.h>
+#include <errno.h>
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))
@@ -11,6 +14,11 @@
 
 static yaml_parser_t parser={};
 static yaml_token_t token={};
+
+static json_object *root=NULL;
+
+// resolv.c
+extern char *resolv(const char *);
 
 void type(){
   switch(token.type){
@@ -92,23 +100,54 @@ static inline void assert_key_assert_val(const char *const k,const char *const v
   assert(0==scalarcmp(v));
 }
 
-static inline char *assert_key_get_val(const char *const k){
+static inline void yaml2json_resolv(const char *const yaml_key,const char *const json_key){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
-  assert(0==strcmp((const char*)(token.data.scalar.value),k));
+  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
   DEL();
   assert_token_type(YAML_VALUE_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
-  // strcpy(v,(const char*)(token.data.scalar.value));
-  // eprintf("%s\n",(const char*)(token.data.scalar.value));
-  char *ret=strdup((const char*)(token.data.scalar.value));
+  char *ip=resolv((const char*)(token.data.scalar.value));
+  assert(ip);
+  printf("IP=\"%s\"\n",ip);
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string(ip)
+  ));
   DEL();
-  return ret;
+  free(ip);
+  ip=NULL;
 }
 
-char *extract(const char *const filename,const char *const s){
+static inline void yaml2json(const char *const yaml_key,const char *const json_key){
+  assert_token_type(YAML_KEY_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
+  DEL();
+  assert_token_type(YAML_VALUE_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string((const char*)(token.data.scalar.value))
+  ));
+  DEL();
+}
+
+static inline void appendjson(const char *const json_key,const char *const v){
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string(v)
+  ));
+}
+
+void extract(const char *const filename,const char *const s){
 
   // Init
   yaml_parser_initialize(&parser);
@@ -174,21 +213,38 @@ char *extract(const char *const filename,const char *const s){
     assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
   }
 
+  assert(NULL!=(root=json_object_new_object()));
+
   assert_key_assert_val("type","ss");
-  char *ret=assert_key_get_val("server");
-  assert_key_ignore_val("port");
-  assert_key_ignore_val("cipher");
-  assert_key_ignore_val("password");
+  yaml2json_resolv("server","server");
+  yaml2json("port","server_port");
+  yaml2json("cipher","method");
+  yaml2json("password","password");
+  appendjson("local_address","127.0.0.1");
+  appendjson("local_port","1080");
+  appendjson("mode","tcp_only");
   assert_key_assert_val("udp","true");
 
   assert_token_type(YAML_BLOCK_END_TOKEN);
+
+  // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
+  const char *tmp="/tmp/ss-local.json";
+  const int i=unlink(tmp);
+  if(i==-1){
+    assert(errno=ENOENT);
+  }else{
+    assert(i==0);
+    printf("removed \'%s\'\n",tmp);
+  }
+  assert(0==json_object_to_file_ext(tmp,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
+  printf("created \'%s\'\n",tmp);
+  assert(1==json_object_put(root));
+  root=NULL;
 
   yaml_parser_delete(&parser);
   parser=(yaml_parser_t){};
   fclose(f);
   f=NULL;
-
-  return ret;
 
 }
 
