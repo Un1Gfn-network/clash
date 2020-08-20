@@ -30,3 +30,6 @@ convert:convert.c
 	@rm -fv $(CONVERT)
 	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(CONVERT) $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
 	ls -lh $(CONVERT)
+
+route.out:route.c
+	$(CC) $(CFLAGS) -o $@ $^
