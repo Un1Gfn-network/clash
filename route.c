@@ -1,57 +1,53 @@
 // https://www.linuxquestions.org/questions/linux-networking-3/how-to-add-a-gateway-address-using-ioctl-in-c-in-linux-512213/
 
+
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <net/route.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-
-// #include <sys/socket.h>
-// #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
 
-int setDefGateway(const char * deviceName,const char * defGateway) {
-  int sockfd;
-  struct rtentry rm;
-  struct sockaddr_in ic_gateway ;// Gateway IP address
-  int err;
+#include <arpa/inet.h>
+#include <net/route.h>
+#include <sys/ioctl.h>
+// #include <netinet/in.h>
+// #include <string.h>
+// #include <sys/socket.h>
+// #include <sys/types.h>
 
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sockfd == -1){
-    printf("socket is -1\n");
-    return -1;
-  }
-
-  memset(&rm, 0, sizeof(rm));
-
-
-  ic_gateway.sin_family = AF_INET;
-  ic_gateway.sin_addr.s_addr = inet_addr(defGateway);
-  ic_gateway.sin_port = 0;
-
-  (( struct sockaddr_in*)&rm.rt_dst)->sin_family = AF_INET;
-  (( struct sockaddr_in*)&rm.rt_dst)->sin_addr.s_addr = 0;
-  (( struct sockaddr_in*)&rm.rt_dst)->sin_port = 0;
-
-  (( struct sockaddr_in*)&rm.rt_genmask)->sin_family = AF_INET;
-  (( struct sockaddr_in*)&rm.rt_genmask)->sin_addr.s_addr = 0;
-  (( struct sockaddr_in*)&rm.rt_genmask)->sin_port = 0;
-
-  memcpy((void *) &rm.rt_gateway, &ic_gateway, sizeof(ic_gateway));
-  rm.rt_flags = RTF_UP | RTF_GATEWAY;
-  if ((err = ioctl(sockfd, SIOCADDRT, &rm)) < 0){
-    printf("SIOCADDRT failed , ret->%d\n",err);
-    return -1;
-  }
-  return 0;
-}
+#include <errno.h>
 
 int main() {
 
-  assert(0==setDefGateway("wlp2s0","192.168.1.3"));
+  struct rtentry e={};
+
+  #define AT(x) ((struct sockaddr_in*)(&(x)))
+
+  // default
+  *AT(e.rt_dst)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0,.sin_addr=INADDR_ANY};
+
+  // via 192.168.1.1
+  *AT(e.rt_gateway)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0};
+  assert(0!=inet_aton("192.168.1.1",&(AT(e.rt_gateway)->sin_addr)));
+
+  // ?
+  *AT(e.rt_genmask)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0,.sin_addr=INADDR_ANY};
+
+  e.rt_flags=RTF_UP|RTF_GATEWAY|RTF_STATIC;
+
+  // metric 303
+  e.rt_metric=303+1;
+
+  // dev wlp2s0
+  char *dev="wlp2s0";
+  e.rt_dev=dev;
+
+  int sockfd=socket(AF_INET,SOCK_DGRAM,0);
+  assert(sockfd>=2);
+  errno=0;
+  assert(-1!=ioctl(sockfd,SIOCADDRT,&e));
+  // assert(-1!=ioctl(sockfd,SIOCDELRT,&e));
+  assert(errno==0);
+  sockfd=0;
 
   return 0;
 }
