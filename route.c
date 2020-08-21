@@ -12,19 +12,18 @@
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <sys/ioctl.h>
-// #include <netinet/in.h>
-// #include <string.h>
-// #include <sys/socket.h>
-// #include <sys/types.h>
 
 #include "def.h"
 
+#define AT(x) ((struct sockaddr_in*)(&(x)))
 #define DEV "wlp2s0"
 
-char *device=NULL;
+typedef enum {
+  DEL,
+  ADD
+} OP;
 
 char *server=NULL;
-
 int sockfd=-1;
 
 void json_load_server(){
@@ -42,52 +41,7 @@ void json_load_server(){
 
 }
 
-typedef enum {
-  DEL,
-  ADD
-} OP;
-
-void route(OP op,const char *dst,const char *via){
-
-  // Only default gateway is implemented so far
-  assert(!dst);
-
-  // if(dst)
-  //   printf("%s\n",dst);
-
-  printf("ip route %s %s via %s dev %s\n", op==DEL?"del":"add", dst?dst:"default", via, DEV);
-
-  struct rtentry e={};
-
-  #define AT(x) ((struct sockaddr_in*)(&(x)))
-
-  // Destination(0.0.0.0 default)
-  *AT(e.rt_dst)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0};
-  if(dst)
-    assert(0!=inet_aton(dst,&(AT(e.rt_dst)->sin_addr))); // Add normal route
-  else
-    AT(e.rt_dst)->sin_addr=(struct in_addr){INADDR_ANY}; // Add default gateway
-
-  // Via(mandatary)
-  assert(via);
-  *AT(e.rt_gateway)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0};
-  assert(0!=inet_aton(via,&(AT(e.rt_gateway)->sin_addr)));
-
-  // Mask
-  // if(dst){
-  //   *AT(e.rt_genmask)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0};
-  //   assert(0!=inet_aton("0.0.0.0",&(AT(e.rt_genmask)->sin_addr)));
-  // }
-  // else
-  *AT(e.rt_genmask)=(struct sockaddr_in){.sin_family=AF_INET,.sin_port=0,.sin_addr={INADDR_ANY}};
-
-  // e.rt_flags = dst ? (RTF_UP|RTF_STATIC) : (RTF_UP|RTF_STATIC|RTF_GATEWAY) ;
-  e.rt_flags = RTF_UP|RTF_STATIC|RTF_GATEWAY;
-
-  // e.rt_metric=303+1;
-
-  e.rt_dev=DEV;
-
+void perform(OP op,struct rtentry *ep){
   int request=-1;
   if(op==DEL)
     request=SIOCDELRT;
@@ -95,51 +49,92 @@ void route(OP op,const char *dst,const char *via){
     request=SIOCADDRT;
   else
     assert(false);
-
   errno=0;
-  if(-1==ioctl(sockfd,request,&e)){
+  if(-1==ioctl(sockfd,request,ep)){
     const int err=errno;
     printf("%d %s\n",err,strerror(err));
     assert(false);    
   }
+}
+
+void net(OP op,const char *gw){
+
+  assert(gw);
+  struct rtentry e={};
+
+  // Destination
+  *AT(e.rt_dst)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0,
+    .sin_addr={INADDR_ANY}
+  };
+
+  // Gateway
+  *AT(e.rt_gateway)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0
+  };
+  assert(0!=inet_aton(gw,&(AT(e.rt_gateway)->sin_addr)));
+
+  // Genmask
+  *AT(e.rt_genmask)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0,
+    .sin_addr={INADDR_ANY}
+  };
+
+  e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_STATIC ;
+  e.rt_dev=DEV;
+  perform(op,&e);
 
 }
 
-void del_gateway(const char *gw){
-  route(DEL,NULL,gw);
+void host(OP op,const char *const dst,const char *gw){
+
+  assert(dst);
+  assert(gw);
+  struct rtentry e={};
+
+  // Destination
+  *AT(e.rt_dst)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0
+  };
+  assert(0!=inet_aton(dst,&(AT(e.rt_dst)->sin_addr)));
+
+  // Gateway
+  *AT(e.rt_gateway)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0
+  };
+  assert(0!=inet_aton(gw,&(AT(e.rt_gateway)->sin_addr)));
+
+  // Genmask
+  *AT(e.rt_genmask)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0,
+    .sin_addr={INADDR_BROADCAST}
+  };
+
+  e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_HOST|RTF_STATIC ;
+  e.rt_dev=DEV;
+  perform(op,&e);
+
 }
 
-void add_gateway(const char *gw){
-  route(ADD,NULL,gw);
-}
+#define del_route(IP,VIA) host(DEL,IP,VIA)
+#define add_route(IP,VIA) host(ADD,IP,VIA)
+#define del_gateway(VIA) net(DEL,VIA)
+#define add_gateway(VIA) net(ADD,VIA)
 
-void del_route_via(const char *dst,const char *via){
-  route(DEL,dst,via);
-}
+int main(const int argc,const char **argv){
 
-void add_route_via(const char *dst,const char *via){
-  route(ADD,dst,via);
-}
+  if( argc!=2 || !argv[1] ){
+    printf("\n  %s <on|off>\n\n",argv[0]);
+    exit(1);
+  }
 
-void set(){
-
-  del_gateway("192.168.1.1");
-
-  // add_route_via(server,"192.168.1.1");
-  // add_gateway("10.0.0.2");
-
-}
-
-void reset(){
-
-  // del_gateway("10.0.0.2");
-  // del_route_via(server,"192.168.1.1");
-
-  add_gateway("192.168.1.1");
-
-}
-
-int main(){
+  assert(0==getuid());
 
   sockfd=socket(AF_INET,SOCK_DGRAM,0);
   assert(sockfd>=2);
@@ -149,15 +144,17 @@ int main(){
   // printf("%s\n",server);
   // exit(0);
 
-  set();
-  reset();
-  set();
-  reset();
-
-  /*reset();
-  set();
-  reset();
-  set();*/
+  if(strcmp(argv[1],"on")){
+    del_gateway("192.168.1.1");
+    add_route(server,"192.168.1.1");
+    add_gateway("10.0.0.2");
+  }else if(strcmp(argv[1],"off")){
+    del_gateway("10.0.0.2");
+    del_route(server,"192.168.1.1");
+    add_gateway("192.168.1.1");
+  }else{
+    assert(false);
+  }
 
   free(server);
   server=NULL;
