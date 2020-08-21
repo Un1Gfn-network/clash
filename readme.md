@@ -56,3 +56,83 @@ http://127.0.0.1:6170/proxies/GLOBAL
   ...
 }
 ```
+
+extract
+
+```bash
+./clash_tun.out rixcloud
+cat /tmp/ss-local.json
+```
+
+ss-local (tty3)
+
+```bash
+# Stop clash
+ss-local -v -c /tmp/ss-local.json
+```
+
+tun2socks
+
+```bash
+su -
+# IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')" "8.8.8.8" "8.8.4.4")
+IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')")
+GW="192.168.1.1"
+echo ${IP[@]}
+
+systemctl stop systemd-resolved.service
+rm -fv /etc/resolv.conf
+ln -sfv /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+systemctl start systemd-resolved.service
+
+ip tuntap add dev tun0 mode tun
+ip link set tun0 up
+ip addr flush dev tun0
+ip addr add dev tun0 10.0.0.1/24
+for i in ${IP[@]}; do ip route add "$i" via "$GW"; done
+ip route del default via "$GW"
+ip route add default via 10.0.0.2
+ip route
+
+iptables -F OUTPUT
+iptables -A OUTPUT -p udp -j REJECT
+iptables -S
+
+# badvpn-udpgw \
+#   --logger stdout \
+#   --loglevel info \
+#   --listen-addr 127.0.0.1:7300
+badvpn-tun2socks \
+  --tundev tun0 \
+  --netif-ipaddr 10.0.0.2 \
+  --netif-netmask 255.255.255.0 \
+  --socks-server-addr 127.0.0.1:1080
+# --udpgw-remote-server-addr 127.0.0.1:7300
+```
+
+untun
+
+```bash
+killall badvpn-tun2socks
+killall ss-local
+
+iptables -F OUTPUT
+
+killall -SIGINT dhcpcd
+pgrep -a dhcpcd
+
+ip addr flush dev tun0
+ip link set tun0 down
+ip link del dev tun0
+ip route flush table main
+ip route
+
+systemctl stop systemd-resolved.service
+rm -fv /etc/resolv.conf
+```
+
+dhcpcd
+
+```bash
+dhcpcd.sh
+```

@@ -7,6 +7,8 @@
 #include <yaml.h>
 #include <errno.h>
 
+#include "def.h"
+
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))
 #define DEL() {yaml_token_delete(&token);token=(yaml_token_t){};}
@@ -228,16 +230,15 @@ void extract(const char *const filename,const char *const s){
   assert_token_type(YAML_BLOCK_END_TOKEN);
 
   // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
-  const char *tmp="/tmp/ss-local.json";
-  const int i=unlink(tmp);
+  const int i=unlink(SS_LOCAL_JSON);
   if(i==-1){
     assert(errno=ENOENT);
   }else{
     assert(i==0);
-    printf("removed \'%s\'\n",tmp);
+    printf("removed \'%s\'\n",SS_LOCAL_JSON);
   }
-  assert(0==json_object_to_file_ext(tmp,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
-  printf("created \'%s\'\n",tmp);
+  assert(0==json_object_to_file_ext(SS_LOCAL_JSON,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
+  printf("created \'%s\'\n",SS_LOCAL_JSON);
   assert(1==json_object_put(root));
   root=NULL;
 
