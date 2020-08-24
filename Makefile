@@ -32,8 +32,8 @@ convert:convert.c
 
 ###
 
-route.out: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c yaml-0.1)
-route.out: LIBS:=$(shell pkg-config --libs json-c yaml-0.1)
+route_ioctl.out: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c yaml-0.1)
+route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c yaml-0.1)
 
-route.out:route.c
+route_ioctl.out:route_ioctl.c
 	$(CC) $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $< $(LIBS)

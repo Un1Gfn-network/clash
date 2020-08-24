@@ -55,6 +55,7 @@ void perform(OP op,struct rtentry *ep){
     printf("%d %s\n",err,strerror(err));
     assert(false);    
   }
+  printf("done\n");
 }
 
 void net(OP op,const char *gw){
@@ -136,7 +137,7 @@ int main(const int argc,const char **argv){
 
   assert(0==getuid());
 
-  sockfd=socket(AF_INET,SOCK_DGRAM,0);
+  sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
   assert(sockfd>=2);
   json_load_server();
   assert(server);
@@ -144,14 +145,14 @@ int main(const int argc,const char **argv){
   // printf("%s\n",server);
   // exit(0);
 
-  if(strcmp(argv[1],"on")){
+  if(0==strcmp(argv[1],"on")){
     del_gateway("192.168.1.1");
     add_route(server,"192.168.1.1");
     add_gateway("10.0.0.2");
-  }else if(strcmp(argv[1],"off")){
-    del_gateway("10.0.0.2");
+  }else if(0==strcmp(argv[1],"off")){
     del_route(server,"192.168.1.1");
     add_gateway("192.168.1.1");
+    del_gateway("10.0.0.2");
   }else{
     assert(false);
   }
