@@ -88,7 +88,7 @@ int main(){
       continue;
     // string to hold content of the route
     // table (i.e. one entry)
-    char dsts[24]={}, gws[24]={}, ifs[16]={}, ms[24]={};
+    char dsts[24]={}, gws[24]={}, ifs[16]={}, ms[24]={}, pri[32]={};
     // inner loop: loop thru all the attributes of
     // one route entry
     struct rtattr *rtap = (struct rtattr *) RTM_RTA(rtp);
@@ -108,13 +108,15 @@ int main(){
         case RTA_OIF:
           sprintf(ifs, "%d", *((int *) RTA_DATA(rtap)));
           break;
+        case RTA_PRIORITY:
+          sprintf(pri, "%d", *((int *) RTA_DATA(rtap)));
+          break;
         default:
-          // assert(false);
           break;
       }
     }
     sprintf(ms, "%d", rtp->rtm_dst_len);
-    printf("dst %s/%s gw %s if %s\n", dsts, ms, gws, ifs);
+    printf("dst %s/%s gw %s if #%s pri %s\n", dsts, ms, gws, ifs, pri);
   }
   // close socket
   close(fd);
