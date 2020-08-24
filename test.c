@@ -9,75 +9,62 @@
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
 
-// struct nlmsghdr nl={.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg))};
-struct nlmsghdr nl={};
-struct rtmsg rt={};
+typedef struct {
+  struct nlmsghdr nl;
+  struct rtmsg    rt;
+  char            buf[8192];
+} Req;
+
 char buf[8192]={};
-
-// variables used for
-// socket communications
-int fd=-1;
-struct sockaddr_nl la={};
-struct sockaddr_nl pa={.nl_family = AF_NETLINK};
-struct msghdr msg={};
-struct iovec iov;
-int rtn;
-
-// buffer to hold the RTNETLINK reply(ies)
-char buf[8192];
-
-// RTNETLINK message pointers & lengths
-// used when processing messages
-struct nlmsghdr *nlp=NULL;
-int nll=0;
-struct rtmsg *rtp=NULL;
-int rtl=0;
-struct rtattr *rtap=NULL;
 
 int main(){
 
   // Open
-  fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+  int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
   assert(fd==3);
 
   // Bind
-  la=(struct sockaddr_nl){
-    .nl_family = AF_NETLINK,
-    .nl_pid = getpid()
-  };
-  bind(fd, (struct sockaddr*) &la, sizeof(la));
+  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
+    .nl_family=AF_NETLINK,
+    .nl_pad=0,
+    .nl_pid=getpid(),
+    .nl_groups=0
+  }),sizeof(struct sockaddr_nl)));
 
   // Send
-  nl=(struct nlmsghdr){
-    .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
-    .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
-    .nlmsg_type = RTM_GETROUTE
+  Req req={
+    .nl=(struct nlmsghdr){
+      .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
+      .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
+      .nlmsg_type = RTM_GETROUTE
+    },
+    .rt={
+      .rtm_family = AF_INET,
+      .rtm_table = RT_TABLE_MAIN
+    },
+    .buf={}
   };
-  rt=(struct rtmsg){
-    .rtm_family = AF_INET,
-    .rtm_table = RT_TABLE_MAIN
-  };
-  iov=(struct iovec){
-    .iov_base = &nl,
-    .iov_len = nl.nlmsg_len
-  };
-  msg=(struct msghdr){
-    .msg_name = (void *) &pa,
-    .msg_namelen = sizeof(pa),
-    .msg_iov = &iov,
+  struct msghdr msg={
+    .msg_name = &(struct sockaddr_nl){.nl_family = AF_NETLINK},
+    .msg_namelen = sizeof(struct sockaddr_nl),
+    .msg_iov = &(struct iovec){
+      .iov_base = &(req.nl),
+      .iov_len = req.nl.nlmsg_len
+    },
     .msg_iovlen = 1
   };
   assert(1<=sendmsg(fd, &msg, 0));
 
   // Receive
   char *p = buf;
+  int nll=0;
   // read from the socket until the NLMSG_DONE is
   // returned in the type of the RTNETLINK message
   // or if it was a monitoring socket
   while(1) {
-    rtn = recv(fd, p, sizeof(buf) - nll, 0);
-    nlp = (struct nlmsghdr *) p;
-    if(nlp->nlmsg_type == NLMSG_DONE)
+    const int rtn = recv(fd, p, sizeof(buf) - nll, 0);
+    struct nlmsghdr *const nlp1 = (struct nlmsghdr *) p;
+    if(nlp1->nlmsg_type == NLMSG_DONE)
       break;
     // increment the buffer pointer to place
     // next message
@@ -85,18 +72,16 @@ int main(){
     // increment the total size by the size of
     // the last received message
     nll += rtn;
-    if((la.nl_groups & RTMGRP_IPV4_ROUTE)== RTMGRP_IPV4_ROUTE)
-      break;
   }
 
   // Print
   // outer loop: loops thru all the NETLINK
   // headers that also include the route entry
   // header
-  nlp = (struct nlmsghdr *) buf;
-  for(;NLMSG_OK(nlp, nll);nlp=NLMSG_NEXT(nlp, nll)){
+  struct nlmsghdr *nlp2 = (struct nlmsghdr *) buf;
+  for(;NLMSG_OK(nlp2, nll);nlp2=NLMSG_NEXT(nlp2, nll)){
     // get route entry header
-    rtp = (struct rtmsg *) NLMSG_DATA(nlp);
+    const struct rtmsg *rtp = (struct rtmsg *) NLMSG_DATA(nlp2);
     // we are only concerned about the
     // main route table
     if(rtp->rtm_table != RT_TABLE_MAIN)
@@ -106,8 +91,8 @@ int main(){
     char dsts[24]={}, gws[24]={}, ifs[16]={}, ms[24]={};
     // inner loop: loop thru all the attributes of
     // one route entry
-    rtap = (struct rtattr *) RTM_RTA(rtp);
-    rtl = RTM_PAYLOAD(nlp);
+    struct rtattr *rtap = (struct rtattr *) RTM_RTA(rtp);
+    int rtl = RTM_PAYLOAD(nlp2);
     for(;RTA_OK(rtap, rtl);rtap=RTA_NEXT(rtap,rtl)){
       switch(rtap->rta_type){
         // destination IPv4 address
@@ -137,7 +122,5 @@ int main(){
   fd=-1;
 
 }
-
-
 
 
