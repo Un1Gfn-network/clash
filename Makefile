@@ -9,7 +9,7 @@ CC::=gcc
 
 CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline
 
-# .PRECIOUS: %.o
+###
 
 main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 extract.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
@@ -34,6 +34,13 @@ convert:convert.c
 
 route_ioctl.out: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c yaml-0.1)
 route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c yaml-0.1)
-
 route_ioctl.out:route_ioctl.c
 	$(CC) $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $< $(LIBS)
+
+###
+
+route.out:route.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+test.out:test.c
+	$(CC) $(CFLAGS) -o $@ $<
