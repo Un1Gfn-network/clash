@@ -41,6 +41,3 @@ route_ioctl.out:route_ioctl.c
 
 route.out:route.c
 	$(CC) $(CFLAGS) -o $@ $<
-
-test.out:test.c
-	$(CC) $(CFLAGS) -o $@ $<

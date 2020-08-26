@@ -11,18 +11,12 @@
 
 #define SZ 8192
 
-// rtnetlink(3)
-typedef struct {
-  struct nlmsghdr nh;
-  struct rtmsg    rt;
-} Req;
+int fd=-1;
 
-int main(){
-
+void init(){
   // Open
-  int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+  fd=socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
   assert(fd==3);
-
   // Bind
   assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
     .nl_family=AF_NETLINK,
@@ -30,39 +24,51 @@ int main(){
     .nl_pid=getpid(),
     .nl_groups=0
   }),sizeof(struct sockaddr_nl)));
+}
 
-  // Send
-  Req req={
-    .nh={
-      .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
-      .nlmsg_type = RTM_GETROUTE, // rtnetlink(7)
-      .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP /*NLM_F_ACK*/ /*NLM_F_ECHO*/
-    },
-    .rt={
-      .rtm_family=AF_INET,
-      .rtm_dst_len=0,
-      .rtm_src_len=0,
-      .rtm_tos=0,
-      .rtm_table=RT_TABLE_MAIN,
-      .rtm_protocol=RTPROT_UNSPEC,
-      .rtm_scope=RT_SCOPE_UNIVERSE,
-      .rtm_type=RTN_UNSPEC,
-      .rtm_flags=0
-    }
-  };
+void end(){
+  assert(0==close(fd));
+  fd=-1;
+}
 
-  assert(sizeof(Req)==req.nh.nlmsg_len);
-  assert((void*)&req==(void*)&(req.nh));
-  const int sent=sendmsg(fd,&(struct msghdr){
+void show(){
+
+  // rtnetlink(3)
+  typedef struct {
+    struct nlmsghdr nh;
+    struct rtmsg    rt;
+  } Req;
+
+  // assert(sizeof(Req)==req.nh.nlmsg_len);
+  // assert((void*)&req==(void*)&(req.nh));
+  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sendmsg(fd,&(struct msghdr){
     .msg_name = &(struct sockaddr_nl){.nl_family = AF_NETLINK},
     .msg_namelen = sizeof(struct sockaddr_nl),
     .msg_iov = &(struct iovec){
-      .iov_base = &req,
+      .iov_base = &(Req){
+        .nh={
+          .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
+          .nlmsg_type = RTM_GETROUTE, // rtnetlink(7)
+          .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP, /*NLM_F_ACK*/ /*NLM_F_ECHO*/
+          .nlmsg_seq=0,
+          .nlmsg_pid=0
+        },
+        .rt={
+          .rtm_family=AF_INET,
+          .rtm_dst_len=0,
+          .rtm_src_len=0,
+          .rtm_tos=0,
+          .rtm_table=RT_TABLE_MAIN,
+          .rtm_protocol=RTPROT_UNSPEC,
+          .rtm_scope=RT_SCOPE_UNIVERSE,
+          .rtm_type=RTN_UNSPEC,
+          .rtm_flags=0
+        }
+      },
       .iov_len = sizeof(Req)
     },
     .msg_iovlen = 1
-  },0);
-  assert(sent==NLMSG_LENGTH(sizeof(struct rtmsg)));
+  },0));
   // printf("%d %zu %zu\n",sent,NLMSG_LENGTH(sizeof(struct rtmsg)),sizeof(struct nlmsghdr)+sizeof(struct rtmsg));
 
   // Receive
@@ -131,9 +137,15 @@ int main(){
 
   }
 
-    close(fd);
-    fd=-1;
+}
 
+int main(){
+
+  init();
+
+  show();
+
+  end();
 }
 
 
