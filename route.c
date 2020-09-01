@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -47,11 +48,11 @@ void receive(){
     const int seglen=recv(fd,p,sizeof(recvbuf)-len,0);
     eprintf("D\n");
     assert(seglen>=1);
-    if(((struct nlmsghdr*)p)->nlmsg_type==NLMSG_DONE || ((struct nlmsghdr*)p)->nlmsg_type==NLMSG_ERROR){
-      p += seglen;
-      len += seglen;
+    len += seglen;
+    // printf("0x%X\n",((struct nlmsghdr*)p)->nlmsg_type);
+    if(((struct nlmsghdr*)p)->nlmsg_type==NLMSG_DONE||((struct nlmsghdr*)p)->nlmsg_type==NLMSG_ERROR)
       break;
-    }
+    p += seglen;
   }
 }
 
@@ -72,88 +73,88 @@ void poll(){
   }
 }
 
-void ack(){
-  assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
-  assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
-}
+// void ack(){
+//   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
+//   assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
+// }
 
-void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
+// void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
 
-  rp->rta_type=type;
+//   rp->rta_type=type;
 
-  int l=0;
-  if(type==RTA_DST||type==RTA_GATEWAY){
-    l=sizeof(struct in_addr);
-    rp->rta_len=RTA_LENGTH(l);
-    bzero(RTA_DATA(rp),l);
-    assert(1==inet_pton(AF_INET,data,RTA_DATA(rp)));
-  }
-  else if(type==RTA_OIF){
-    l=sizeof(int);
-    rp->rta_len=RTA_LENGTH(l);
-    *((int*)RTA_DATA(rp))=*((int*)data);
-  }else{
-    assert(false);
-  }
+//   int l=0;
+//   if(type==RTA_DST||type==RTA_GATEWAY){
+//     l=sizeof(struct in_addr);
+//     rp->rta_len=RTA_LENGTH(l);
+//     bzero(RTA_DATA(rp),l);
+//     assert(1==inet_pton(AF_INET,data,RTA_DATA(rp)));
+//   }
+//   else if(type==RTA_OIF){
+//     l=sizeof(int);
+//     rp->rta_len=RTA_LENGTH(l);
+//     *((int*)RTA_DATA(rp))=*((int*)data);
+//   }else{
+//     assert(false);
+//   }
 
-  np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
+//   np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
 
-}
+// }
 
-void add(){
+// void add(){
 
-  printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
+//   printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
 
-  typedef struct {
-    struct nlmsghdr nh;
-    struct rtmsg rt;
-    char attrbuf[SZ]; // rtnetlink(3)
-  } Req;
+//   typedef struct {
+//     struct nlmsghdr nh;
+//     struct rtmsg rt;
+//     char attrbuf[SZ]; // rtnetlink(3)
+//   } Req;
 
-  Req req={
-    .nh={
-      .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
-      .nlmsg_type = RTM_NEWROUTE,
-      // .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE,
-      .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE | NLM_F_ACK ,
-      .nlmsg_seq=0,
-      .nlmsg_pid=0
-    },
-    .rt={
-      .rtm_family=AF_INET,
-      .rtm_dst_len=32,
-      .rtm_src_len=0,
-      .rtm_tos=0,
-      .rtm_table=RT_TABLE_MAIN,
-      .rtm_protocol=RTPROT_BOOT,
-      .rtm_scope=RT_SCOPE_UNIVERSE,
-      .rtm_type=RTN_UNICAST,
-      .rtm_flags=0
-    },
-    .attrbuf={}
-  };
-  assert(NLMSG_DATA(&req.nh)==&req.rt);
+//   Req req={
+//     .nh={
+//       .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
+//       .nlmsg_type = RTM_NEWROUTE,
+//       // .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE,
+//       .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE | NLM_F_ACK ,
+//       .nlmsg_seq=0,
+//       .nlmsg_pid=0
+//     },
+//     .rt={
+//       .rtm_family=AF_INET,
+//       .rtm_dst_len=32,
+//       .rtm_src_len=0,
+//       .rtm_tos=0,
+//       .rtm_table=RT_TABLE_MAIN,
+//       .rtm_protocol=RTPROT_BOOT,
+//       .rtm_scope=RT_SCOPE_UNIVERSE,
+//       .rtm_type=RTN_UNICAST,
+//       .rtm_flags=0
+//     },
+//     .attrbuf={}
+//   };
+//   assert(NLMSG_DATA(&req.nh)==&req.rt);
 
-  struct rtattr *rta=(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg)));
-  assert(RTM_RTA(NLMSG_DATA(&req.nh))==rta);
-  int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
+//   struct rtattr *rta=(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg)));
+//   assert(RTM_RTA(NLMSG_DATA(&req.nh))==rta);
+//   int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
 
-  attr(&req.nh,rta,RTA_DST,"7.7.7.7");
-  rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_GATEWAY,"192.168.1.1");
-  rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_OIF,&((int){3}));
+//   attr(&req.nh,rta,RTA_DST,"7.7.7.7");
+//   rta=RTA_NEXT(rta,len);
+//   attr(&req.nh,rta,RTA_GATEWAY,"192.168.1.1");
+//   rta=RTA_NEXT(rta,len);
+//   attr(&req.nh,rta,RTA_OIF,&((int){3}));
 
-  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+//   assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
 
-  // eprintf("A\n");
-  receive();
-  // eprintf("B\n");
+//   // eprintf("A\n");
+//   receive();
+//   // eprintf("B\n");
 
-  ack();
-  clearbuf();
+//   ack();
+//   clearbuf();
 
-}
+// }
 
 void show(){
 
@@ -187,85 +188,92 @@ void show(){
 
   receive();
 
-  poll();
+  // poll();
+  // exit(0);
 
-  // // netlink(7)
-  // for(;NLMSG_OK(nh, len);nh=NLMSG_NEXT(nh, len)){
+  // netlink(7)
+  struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
+  for(;NLMSG_OK(nh, len);nh=NLMSG_NEXT(nh, len)){
 
-  //   assert(nh->nlmsg_type==RTM_NEWROUTE);
-  //   assert(nh->nlmsg_pid==(unsigned)getpid());
-  //   assert(nh->nlmsg_flags==NLM_F_MULTI);
+    if(nh->nlmsg_type==NLMSG_DONE)
+      break;
 
-  //   const struct rtmsg *payload=(struct rtmsg*)NLMSG_DATA(nh);
-  //   if(payload->rtm_table!=RT_TABLE_MAIN){
-  //     assert(payload->rtm_table==RT_TABLE_LOCAL);
-  //     printf("[local] (skipped)\n");
-  //     continue;
-  //   }
-  //   printf("[main] ");
-  //   assert(payload->rtm_family==AF_INET);
-  //   printf("/%u ",payload->rtm_dst_len);
-  //   assert(payload->rtm_src_len==0);
-  //   assert(payload->rtm_tos==0);
-  //   // printf("%u ",payload->rtm_protocol);
-  //   if(payload->rtm_protocol==RTPROT_DHCP)
-  //     printf("dhcp ");
-  //   else if(payload->rtm_protocol==RTPROT_BOOT)
-  //     printf("boot ");
-  //   if(payload->rtm_scope==RT_SCOPE_LINK)
-  //     printf("link ");
-  //   else if(payload->rtm_scope==RT_SCOPE_UNIVERSE)
-  //     printf("universe ");
-  //   else
-  //     assert(false);
-  //   assert(payload->rtm_type==RTN_UNICAST);
-  //   assert(payload->rtm_flags==0);
+    assert(nh->nlmsg_type==RTM_NEWROUTE);
+    assert(nh->nlmsg_pid==(unsigned)getpid());
+    assert(nh->nlmsg_flags==NLM_F_MULTI);
 
-  //   printf("||| ");
+    const struct rtmsg *payload=(struct rtmsg*)NLMSG_DATA(nh);
+    if(payload->rtm_table!=RT_TABLE_MAIN){
+      assert(payload->rtm_table==RT_TABLE_LOCAL);
+      printf("[local] (skipped)\n");
+      continue;
+    }
+    printf("[main] ");
+    assert(payload->rtm_family==AF_INET);
+    printf("/%u ",payload->rtm_dst_len);
+    assert(payload->rtm_src_len==0);
+    assert(payload->rtm_tos==0);
+    // printf("%u ",payload->rtm_protocol);
+    if(payload->rtm_protocol==RTPROT_DHCP)
+      printf("dhcp ");
+    else if(payload->rtm_protocol==RTPROT_BOOT)
+      printf("boot ");
+    if(payload->rtm_scope==RT_SCOPE_LINK)
+      printf("link ");
+    else if(payload->rtm_scope==RT_SCOPE_UNIVERSE)
+      printf("universe ");
+    else
+      assert(false);
+    assert(payload->rtm_type==RTN_UNICAST);
+    assert(payload->rtm_flags==0);
 
-  //   // struct rtattr *p = (struct rtattr *)RTM_RTA(payload);
+    printf("||| ");
 
-  //   struct rtattr *p=(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg)));
-  //   assert(RTM_RTA(payload)==p);
+    // struct rtattr *p = (struct rtattr *)RTM_RTA(payload);
 
-  //   int rtl = RTM_PAYLOAD(nh);
+    struct rtattr *p=(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg)));
+    assert(RTM_RTA(payload)==p);
 
-  //   for(;RTA_OK(p, rtl);p=RTA_NEXT(p,rtl)){
-  //     char s[INET_ADDRSTRLEN]={};
-  //     switch(p->rta_type){
-  //       case RTA_DST:
-  //         if(((struct sockaddr_in*)RTA_DATA(p))->sin_addr.s_addr==INADDR_ANY){
-  //           printf("default ");
-  //         }else{
-  //           assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
-  //           printf("dst %s ",s);
-  //         }
-  //         break;
-  //       case RTA_OIF:
-  //         printf("dev %d ",*((int*)RTA_DATA(p)));
-  //         break;
-  //       case RTA_GATEWAY:
-  //         assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
-  //         printf("gw %s ",s);
-  //         break;
-  //       case RTA_PRIORITY:
-  //         printf("pri %d ",*((int*)RTA_DATA(p)));
-  //         break;
-  //       case RTA_PREFSRC:
-  //         assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
-  //         printf("prefsrc %s ",s);
-  //         break;
-  //       case RTA_TABLE:
-  //         break;
-  //       default:
-  //         printf("[type %u] ",p->rta_type);
-  //         break;
-  //     }
-  //   }
+    int rtl = RTM_PAYLOAD(nh);
 
-  //   printf("\n");
+    for(;RTA_OK(p, rtl);p=RTA_NEXT(p,rtl)){
+      char s[INET_ADDRSTRLEN]={};
+      switch(p->rta_type){
+        case RTA_DST:
+          if(((struct sockaddr_in*)RTA_DATA(p))->sin_addr.s_addr==INADDR_ANY){
+            printf("default ");
+          }else{
+            assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
+            printf("dst %s ",s);
+          }
+          break;
+        case RTA_OIF:
+          printf("dev %d ",*((int*)RTA_DATA(p)));
+          break;
+        case RTA_GATEWAY:
+          assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
+          printf("gw %s ",s);
+          break;
+        case RTA_PRIORITY:
+          printf("pri %d ",*((int*)RTA_DATA(p)));
+          break;
+        case RTA_PREFSRC:
+          assert(s==inet_ntop(AF_INET,RTA_DATA(p),s,INET_ADDRSTRLEN));
+          printf("prefsrc %s ",s);
+          break;
+        case RTA_TABLE:
+          break;
+        default:
+          printf("[type %u] ",p->rta_type);
+          break;
+      }
+    }
 
-  // }
+    printf("\n");
+
+  }
+
+  clearbuf();
 
 }
 
@@ -274,7 +282,9 @@ int main(){
   init();
 
   // show();
-  add();
+  for(int i=0;i<100;++i)
+    show();
+
 
   end();
 
