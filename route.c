@@ -14,6 +14,9 @@
 #define SZ 8192
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
+// jsrv.c
+char *json_load_server();
+
 int fd=-1;
 
 char recvbuf[SZ]={};
@@ -93,9 +96,10 @@ void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
   np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
 }
 
-void add(){
+void add(const char *dst, const char *via){
 
-  printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
+  // printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
+  assert(0==getuid());
 
   typedef struct {
     struct nlmsghdr nh;
@@ -131,9 +135,9 @@ void add(){
   assert(RTM_RTA(NLMSG_DATA(&req.nh))==rta);
   int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
 
-  attr(&req.nh,rta,RTA_DST,"7.7.7.7");
+  attr(&req.nh,rta,RTA_DST,dst);
   rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_GATEWAY,"192.168.1.1");
+  attr(&req.nh,rta,RTA_GATEWAY,via);
   rta=RTA_NEXT(rta,len);
   attr(&req.nh,rta,RTA_OIF,&((int){3}));
 
@@ -270,6 +274,12 @@ void show(){
 
 }
 
+void external(){
+  printf("Terminate? ");
+  fflush(stdout);
+  while(getchar()!='\n'){}
+}
+
 void getgw(char *const s){
 
   ask();
@@ -352,22 +362,25 @@ int main(){
   // tun_flush();
   // tun_addr("10.0.0.1");
 
-  // char *server=json_load_server(server);
-  // assert(server);
-  // add(server,gw);
-
   char gw[INET_ADDRSTRLEN]={};
   getgw(gw);
-  printf("%s\n",gw);
+  // printf("%s\n",gw);
+  assert(0==strcmp(gw,"192.168.1.1"));
   // delgw(gw);
   // addgw("10.0.0.2");
 
-  // badvpn();
+  char *server=json_load_server();
+  assert(server);
+  printf("%s\n",server);
+  add(server,gw);
+
+  // external();
+
+  // del(server,gw);
+  free(server);
 
   // delgw("10.0.0.2");
   // addgw(gw);
-
-  // del(server,gw);
 
   // tun_flush();
   // tun_down();
