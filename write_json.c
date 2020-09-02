@@ -149,7 +149,7 @@ static inline void appendjson(const char *const json_key,const char *const v){
   ));
 }
 
-void extract(const char *const filename,const char *const s){
+void write_json(const char *const filename,const char *const s){
 
   // Init
   yaml_parser_initialize(&parser);

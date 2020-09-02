@@ -13,7 +13,7 @@ static size_t sz=0;
 static json_tokener *tok=NULL;
 
 // yaml.c
-extern char *extract(const char *const,const char *const);
+extern char *write_json(const char *const,const char *const);
 
 static inline void assert_field(const json_object *const j,const char *const k,const char *const v){
   json_object *p=NULL;
@@ -191,7 +191,7 @@ int main(const int argc,const char **argv){
   strcat(filename,argv[1]);
   strcat(filename,r);
   // eprintf("%s\n",filename);
-  extract(filename,name);
+  write_json(filename,name);
 
   free(name);
   name=NULL;
