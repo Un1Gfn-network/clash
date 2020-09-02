@@ -22,6 +22,19 @@ int fd=-1;
 char recvbuf[SZ]={};
 int len=0;
 
+// For RTM_NEWROUTE and RTM_DELROUTE
+typedef struct {
+  struct nlmsghdr nh;
+  struct rtmsg rt;
+  char attrbuf[SZ]; // rtnetlink(3)
+} Req;
+
+// For RTM_GETROUTE only
+typedef struct {
+  struct nlmsghdr nh;
+  struct rtmsg rt;
+} Req_get;
+
 void init(){
   fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
   assert(fd==3);
@@ -96,23 +109,58 @@ void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
   np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
 }
 
+void del(const char *dst, const char *via){
+
+  // printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
+  assert(0==getuid());
+
+  Req req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
+      .nlmsg_type=RTM_DELROUTE,
+      .nlmsg_flags=NLM_F_REQUEST | NLM_F_ACK ,
+      .nlmsg_seq=0,
+      .nlmsg_pid=0
+    },
+    .rt={
+      .rtm_family=AF_INET,
+      .rtm_dst_len=32,
+      .rtm_src_len=0,
+      .rtm_tos=0,
+      .rtm_table=RT_TABLE_MAIN,
+      .rtm_protocol=RTPROT_UNSPEC,
+      .rtm_scope=RT_SCOPE_UNIVERSE,
+      .rtm_type=RTN_UNICAST,
+      .rtm_flags=0
+    },
+    .attrbuf={}
+  };
+  assert(NLMSG_DATA(&req.nh)==&req.rt);
+
+  struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
+  assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
+  int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
+  attr(&req.nh,rta,RTA_DST,dst);rta=RTA_NEXT(rta,len);
+  attr(&req.nh,rta,RTA_GATEWAY,via);rta=RTA_NEXT(rta,len);
+  attr(&req.nh,rta,RTA_OIF,&((int){3}));
+
+  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+  receive();
+  ack();
+  clearbuf();
+
+}
+
 void add(const char *dst, const char *via){
 
   // printf("+ dst 7.7.7.7 gw 192.168.1.1 dev 3\n");
   assert(0==getuid());
 
-  typedef struct {
-    struct nlmsghdr nh;
-    struct rtmsg rt;
-    char attrbuf[SZ]; // rtnetlink(3)
-  } Req;
-
   Req req={
     .nh={
-      .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
-      .nlmsg_type = RTM_NEWROUTE,
-      // .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE,
-      .nlmsg_flags = NLM_F_REQUEST | NLM_F_EXCL | NLM_F_CREATE | NLM_F_ACK ,
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
+      .nlmsg_type=RTM_NEWROUTE,
+      .nlmsg_flags=NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE ,
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
@@ -131,18 +179,14 @@ void add(const char *dst, const char *via){
   };
   assert(NLMSG_DATA(&req.nh)==&req.rt);
 
-  struct rtattr *rta=(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg)));
-  assert(RTM_RTA(NLMSG_DATA(&req.nh))==rta);
+  struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
+  assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
   int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
-
-  attr(&req.nh,rta,RTA_DST,dst);
-  rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_GATEWAY,via);
-  rta=RTA_NEXT(rta,len);
+  attr(&req.nh,rta,RTA_DST,dst);rta=RTA_NEXT(rta,len);
+  attr(&req.nh,rta,RTA_GATEWAY,via);rta=RTA_NEXT(rta,len);
   attr(&req.nh,rta,RTA_OIF,&((int){3}));
 
   assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
-
   receive();
   ack();
   clearbuf();
@@ -150,17 +194,14 @@ void add(const char *dst, const char *via){
 }
 
 void ask(){
+
   // rtnetlink(3)
-  typedef struct {
-    struct nlmsghdr nh;
-    struct rtmsg    rt;
-  } Req;
-  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req));
-  assert(sizeof(Req)==send(fd,&(Req){
+  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req_get));
+  assert(sizeof(Req_get)==send(fd,&(Req_get){
     .nh={
-      .nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
-      .nlmsg_type = RTM_GETROUTE, // rtnetlink(7)
-      .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP, /*NLM_F_ACK*/ /*NLM_F_ECHO*/
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
+      .nlmsg_type=RTM_GETROUTE, // rtnetlink(7)
+      .nlmsg_flags=NLM_F_REQUEST | NLM_F_DUMP, /*NLM_F_ACK*/ /*NLM_F_ECHO*/
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
@@ -175,7 +216,7 @@ void ask(){
       .rtm_type=RTN_UNSPEC,
       .rtm_flags=0
     }
-  },sizeof(Req),0));
+  },sizeof(Req_get),0));
 }
 
 void show(){
@@ -225,7 +266,7 @@ void show(){
     assert(p==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
     // assert(RTM_RTA(rtm)==p);
 
-    int rtl = RTM_PAYLOAD(nh);
+    int rtl=RTM_PAYLOAD(nh);
 
     for(;RTA_OK(p, rtl);p=RTA_NEXT(p,rtl)){
       char s[INET_ADDRSTRLEN]={};
@@ -371,12 +412,12 @@ int main(){
 
   char *server=json_load_server();
   assert(server);
-  printf("%s\n",server);
+  // printf("%s\n",server);
   add(server,gw);
 
-  // external();
+  external();
 
-  // del(server,gw);
+  del(server,gw);
   free(server);
 
   // delgw("10.0.0.2");
