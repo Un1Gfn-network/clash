@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <json.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -18,28 +17,15 @@
 #define AT(x) ((struct sockaddr_in*)(&(x)))
 #define DEV "wlp2s0"
 
+// jserv.c
+char *json_load_server();
+
 typedef enum {
   DEL,
   ADD
 } OP;
 
-char *server=NULL;
 int sockfd=-1;
-
-void json_load_server(){
-
-  json_object *j=json_object_from_file(SS_LOCAL_JSON);
-  assert(j);
-  assert(json_type_object==json_object_get_type(j));
-
-  json_object *j2=json_object_object_get(j,"server");
-  assert(j2);
-  assert(json_type_string==json_object_get_type(j2));
-  server=strdup(json_object_get_string(j2));
-
-  assert(1==json_object_put(j));
-
-}
 
 void perform(OP op,struct rtentry *ep){
   int request=-1;
@@ -139,7 +125,7 @@ int main(const int argc,const char **argv){
 
   sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
   assert(sockfd>=2);
-  json_load_server();
+  char *server=json_load_server();
   assert(server);
 
   // printf("%s\n",server);
