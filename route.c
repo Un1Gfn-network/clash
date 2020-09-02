@@ -19,8 +19,6 @@ int fd=-1;
 char recvbuf[SZ]={};
 int len=0;
 
-struct in_addr gw={};
-
 void init(){
   fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
   assert(fd==3);
@@ -272,7 +270,7 @@ void show(){
 
 }
 
-void getgw(){
+void getgw(char *const s){
 
   ask();
   receive();
@@ -317,7 +315,8 @@ void getgw(){
     for(;RTA_OK(rta, rtl);rta=RTA_NEXT(rta,rtl)){
       switch(rta->rta_type){
         case RTA_GATEWAY:
-          gw=*(struct in_addr*)RTA_DATA(rta);
+          // gw=*(struct in_addr*)RTA_DATA(rta);
+          assert(s==inet_ntop(AF_INET,RTA_DATA(rta),s,INET_ADDRSTRLEN));
           break;
         case RTA_OIF:
           assert(3==*((int*)RTA_DATA(rta)));
@@ -348,14 +347,31 @@ int main(){
 
   init();
 
-  show();
+  // tun_create();
+  // tun_up();
+  // tun_flush();
+  // tun_addr("10.0.0.1");
 
-  getgw();
-  char s[INET_ADDRSTRLEN]={};
-  inet_ntop(AF_INET,&gw,s,INET_ADDRSTRLEN);
-  printf("%s\n",s);
+  // char *server=json_load_server(server);
+  // assert(server);
+  // add(server,gw);
 
-  show();
+  char gw[INET_ADDRSTRLEN]={};
+  getgw(gw);
+  printf("%s\n",gw);
+  // delgw(gw);
+  // addgw("10.0.0.2");
+
+  // badvpn();
+
+  // delgw("10.0.0.2");
+  // addgw(gw);
+
+  // del(server,gw);
+
+  // tun_flush();
+  // tun_down();
+  // tun_del();
 
   end();
 
