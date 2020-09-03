@@ -6,9 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <arpa/inet.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <linux/rtnetlink.h>
+
+#include <net/if_arp.h>
+#include <net/if.h>
 
 // #define SZ 16384
 #define SZ 8192
@@ -65,22 +68,20 @@ void receive(){
   }
 }
 
-/*void poll(){
+void poll(){
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
-  for(;NLMSG_OK(nh, len);nh=NLMSG_NEXT(nh, len)){
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
     switch(nh->nlmsg_type){
       case NLMSG_NOOP:printf("NLMSG_NOOP ");break;
       case NLMSG_ERROR:printf("NLMSG_ERROR ");break;
       case NLMSG_DONE:printf("NLMSG_DONE ");break;
-      case RTM_NEWROUTE:
-        printf("RTM_NEWROUTE ");
-        // struct rtmsg *rtm=NLMSG_DATA(nh);
-        break;
+      case RTM_NEWROUTE:printf("RTM_NEWROUTE ");break;
+      case RTM_NEWLINK:printf("RTM_NEWLINK ");break;
       default:assert(false);
     }
     printf("\n");
   }
-}*/
+}
 
 void ack(){
   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
@@ -110,7 +111,7 @@ void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
 #define del_route(dst,via) route(false,false,dst,via)
 #define add_gateway(via) route(true,true,NULL,via)
 #define del_gateway(via) route(false,true,NULL,via)
-void route(bool add,bool gw,const char *dst, const char *via){
+void route(bool add,bool gw,const char *dst,const char *via){
 
   assert(0==getuid());
   if(gw)
@@ -169,9 +170,9 @@ void ask_route(){
   assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req_getroute));
   assert(sizeof(Req_getroute)==send(fd,&(Req_getroute){
     .nh={
-      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
-      .nlmsg_type=RTM_GETROUTE, // rtnetlink(7)
-      .nlmsg_flags=NLM_F_REQUEST | NLM_F_DUMP, /*NLM_F_ACK*/ /*NLM_F_ECHO*/
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
+      .nlmsg_type=RTM_GETROUTE,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ROOT,
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
@@ -189,21 +190,29 @@ void ask_route(){
   },sizeof(Req_getroute),0));
 }
 
+void steal_flag(unsigned int *flags,const unsigned int f,const char *const s){
+  if(*flags&f){
+    printf("%s ",s);
+    *flags=*flags&(~f);
+  }
+}
+
 void print_route(){
 
   ask_route();
   receive();
 
-  // netlink(7)
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
-  for(;NLMSG_OK(nh, len);nh=NLMSG_NEXT(nh, len)){
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
 
     if(nh->nlmsg_type==NLMSG_DONE)
       break;
-
-    assert(nh->nlmsg_type==RTM_NEWROUTE);
-    assert(nh->nlmsg_pid==(unsigned)getpid());
-    assert(nh->nlmsg_flags==NLM_F_MULTI);
+    assert(
+      // nh->nlmsg_len
+      nh->nlmsg_type==RTM_NEWROUTE &&
+      nh->nlmsg_flags==NLM_F_MULTI &&
+      nh->nlmsg_pid==(unsigned)getpid()
+    );
 
     const struct rtmsg *rtm=(struct rtmsg*)NLMSG_DATA(nh);
     if(rtm->rtm_table!=RT_TABLE_MAIN){
@@ -212,6 +221,8 @@ void print_route(){
       continue;
     }
     printf("[main] ");
+    // printf("[%u] ",rtm->rtm_family);
+    // fflush(stdout);
     assert(rtm->rtm_family==AF_INET);
     printf("/%u ",rtm->rtm_dst_len);
     assert(rtm->rtm_src_len==0);
@@ -239,7 +250,7 @@ void print_route(){
 
     int rtl=RTM_PAYLOAD(nh);
 
-    for(;RTA_OK(p, rtl);p=RTA_NEXT(p,rtl)){
+    for(;RTA_OK(p,rtl);p=RTA_NEXT(p,rtl)){
       char s[INET_ADDRSTRLEN]={};
       switch(p->rta_type){
         case RTA_DST:
@@ -298,7 +309,7 @@ void get_gateway(char *const s){
   receive();
 
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
-  for(;NLMSG_OK(nh, len);nh=NLMSG_NEXT(nh, len)){
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
 
     assert(
       // nh->nlmsg_len
@@ -334,7 +345,7 @@ void get_gateway(char *const s){
     struct rtattr *rta=(struct rtattr*)RTM_RTA(rtm);
     assert(rta==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
     int rtl=RTM_PAYLOAD(nh);
-    for(;RTA_OK(rta, rtl);rta=RTA_NEXT(rta,rtl)){
+    for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
       switch(rta->rta_type){
         case RTA_GATEWAY:
           // gw=*(struct in_addr*)RTA_DATA(rta);
@@ -400,30 +411,98 @@ void reset(){
 
 }
 
-/*void print_link(){
+void print_link(){
 
-  // For RTM_GETROUTE only
   typedef struct {
     struct nlmsghdr nh;
-    struct rtmsg rt;
-  } Req_getroute;
+    struct ifinfomsg ifi;
+  } Req_getlink;
+
+  assert(NLMSG_LENGTH(sizeof(struct ifinfomsg))==sizeof(Req_getlink));
+  assert(sizeof(Req_getlink)==send(fd,&(Req_getlink){
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_GETLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ROOT,
+      .nlmsg_seq=0,
+      .nlmsg_pid=0
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      .ifi_type=0,
+      .ifi_index=0,
+      .ifi_flags=0,
+      .ifi_change=0,
+    }
+  },sizeof(Req_getlink),0));
+
+  receive();
+
+  // poll();
+
+  struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
+
+    if(nh->nlmsg_type==NLMSG_DONE)
+      break;
+    assert(
+      // nh->nlmsg_len
+      nh->nlmsg_type==RTM_NEWLINK &&
+      nh->nlmsg_flags==NLM_F_MULTI &&
+      nh->nlmsg_pid==(unsigned)getpid()
+    );
+
+    struct ifinfomsg *ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
+    assert(
+      ifm->ifi_family==AF_UNSPEC
+      // ifm->ifi_type
+      // ifm->ifi_index
+      // ifm->ifi_flags
+      // ifm->ifi_change
+    );
+
+    printf("#%d ",ifm->ifi_index);
+
+    // printf("[%u 0x%X] ",ifm->ifi_type,ifm->ifi_type);
+    switch(ifm->ifi_type){
+      case ARPHRD_LOOPBACK:printf("ARPHRD_LOOPBACK ");break;
+      case ARPHRD_ETHER:printf("ARPHRD_ETHER ");break;
+      case ARPHRD_NONE:printf("ARPHRD_NONE ");break;
+      default:assert(false);break;
+    }
+
+    // printf("[0x%X] ",ifm->ifi_flags);
+    steal_flag(&(ifm->ifi_flags),IFF_UP,"UP");
+    steal_flag(&(ifm->ifi_flags),IFF_BROADCAST,"BROADCAST");
+    steal_flag(&(ifm->ifi_flags),IFF_LOOPBACK,"LOOPBACK");
+    steal_flag(&(ifm->ifi_flags),IFF_POINTOPOINT,"POINTOPOINT");
+    steal_flag(&(ifm->ifi_flags),IFF_RUNNING,"RUNNING");
+    steal_flag(&(ifm->ifi_flags),IFF_NOARP,"NOARP");
+    steal_flag(&(ifm->ifi_flags),IFF_PROMISC,"PROMISC");
+    steal_flag(&(ifm->ifi_flags),IFF_MULTICAST,"MULTICAST");
+    steal_flag(&(ifm->ifi_flags),0x10000,"0x10000");
+    assert(ifm->ifi_flags==0);
+
+    printf("\n");
+
+  }
 
   clearbuf();
 
-}*/
+}
 
 int main(){
 
   init();
 
-  // print_link();
+  print_link();
 
-  print_route();
-  set();
-  print_route();
-  external();
-  reset();
-  print_route();
+  // print_route();
+  // set();
+  // print_route();
+  // external();
+  // reset();
+  // print_route();
 
   end();
 
