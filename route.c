@@ -10,8 +10,6 @@
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
 
-#define ADD 1
-#define DEL 0
 // #define SZ 16384
 #define SZ 8192
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
@@ -111,25 +109,31 @@ void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
   np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
 }
 
-void route(int op,const char *dst, const char *via){
+#define add_route(dst,via) route(true,false,dst,via)
+#define del_route(dst,via) route(false,false,dst,via)
+#define add_gateway(via) route(true,true,NULL,via)
+#define del_gateway(via) route(false,true,NULL,via)
+void route(bool add,bool gw,const char *dst, const char *via){
 
   assert(0==getuid());
+  if(gw)
+    assert(!dst);
 
   Req req={
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
-      .nlmsg_type= op ? RTM_NEWROUTE : RTM_DELROUTE ,
-      .nlmsg_flags= op ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
+      .nlmsg_type= add ? RTM_NEWROUTE : RTM_DELROUTE ,
+      .nlmsg_flags= add ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
     .rt={
       .rtm_family=AF_INET,
-      .rtm_dst_len=32,
+      .rtm_dst_len= gw ? 0 : 32 ,
       .rtm_src_len=0,
       .rtm_tos=0,
       .rtm_table=RT_TABLE_MAIN,
-      .rtm_protocol= op ? RTPROT_BOOT : RTPROT_UNSPEC,
+      .rtm_protocol= add ? RTPROT_BOOT : RTPROT_UNSPEC,
       .rtm_scope=RT_SCOPE_UNIVERSE,
       .rtm_type=RTN_UNICAST,
       .rtm_flags=0
@@ -141,52 +145,12 @@ void route(int op,const char *dst, const char *via){
   struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
   assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
   int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
-  attr(&req.nh,rta,RTA_DST,dst);rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_GATEWAY,via);rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_OIF,&((int){3}));
-
-  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
-  receive();
-  ack();
-  clearbuf();
-
-}
-
-void gateway(int op,const char *gw){
-
-  assert(0==getuid());
-  // assert(op==DEL);
-
-  Req req={
-    .nh={
-      .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
-      // .nlmsg_type=RTM_DELROUTE ,
-      .nlmsg_type= op ? RTM_NEWROUTE : RTM_DELROUTE ,
-      // .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
-      .nlmsg_flags= op ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
-      .nlmsg_seq=0,
-      .nlmsg_pid=0
-    },
-    .rt={
-      .rtm_family=AF_INET,
-      .rtm_dst_len=0, // gateway "/0" subnet "/24" route "/32"
-      .rtm_src_len=0,
-      .rtm_tos=0,
-      .rtm_table=RT_TABLE_MAIN,
-      // .rtm_protocol=RTPROT_UNSPEC,
-      .rtm_protocol= op ? RTPROT_BOOT : RTPROT_UNSPEC,
-      .rtm_scope=RT_SCOPE_UNIVERSE,
-      .rtm_type=RTN_UNICAST,
-      .rtm_flags=0
-    },
-    .attrbuf={}
-  };
-  assert(NLMSG_DATA(&req.nh)==&req.rt);
-
-  struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
-  assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
-  int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
-  attr(&req.nh,rta,RTA_GATEWAY,gw);rta=RTA_NEXT(rta,len);
+  if(!gw){
+    attr(&req.nh,rta,RTA_DST,dst);
+    rta=RTA_NEXT(rta,len);
+  }
+  attr(&req.nh,rta,RTA_GATEWAY,via);
+  rta=RTA_NEXT(rta,len);
   attr(&req.nh,rta,RTA_OIF,&((int){3}));
 
   assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
@@ -411,23 +375,23 @@ int main(){
   char gw[INET_ADDRSTRLEN]={};
   getgw(gw);
   assert(0==strcmp(gw,"192.168.1.1"));
-  gateway(DEL,gw);
-  // gateway(ADD,"10.0.0.2");
+  del_gateway(gw);
+  // add_gateway("10.0.0.2");
 
-  // char *server=json_load_server();
-  // assert(server);
-  // printf("%s\n",server);
-  // route(ADD,server,gw);
+  char *server=json_load_server();
+  assert(server);
+  printf("%s\n",server);
+  add_route(server,gw);
 
   show();
   external();
 
-  // route(DEL,server,gw);
-  // free(server);
-  // server=NULL;
+  del_route(server,gw);
+  free(server);
+  server=NULL;
 
-  // gateway(DEL,"10.0.0.2");
-  gateway(ADD,gw);
+  // del_gateway("10.0.0.2");
+  add_gateway(gw);
 
   // tun_flush();
   // tun_down();
