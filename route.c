@@ -119,7 +119,6 @@ void route(int op,const char *dst, const char *via){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
       .nlmsg_type= op ? RTM_NEWROUTE : RTM_DELROUTE ,
-      // .nlmsg_flags=NLM_F_REQUEST | NLM_F_ACK | op ? (NLM_F_EXCL|NLM_F_CREATE) : 0 ,
       .nlmsg_flags= op ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
       .nlmsg_seq=0,
       .nlmsg_pid=0
@@ -156,15 +155,15 @@ void route(int op,const char *dst, const char *via){
 void gateway(int op,const char *gw){
 
   assert(0==getuid());
-  assert(op==DEL);
+  // assert(op==DEL);
 
   Req req={
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
-      .nlmsg_type=RTM_DELROUTE ,
-      // .nlmsg_type= op ? RTM_NEWROUTE : RTM_DELROUTE ,
-      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
-      // .nlmsg_flags= op ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
+      // .nlmsg_type=RTM_DELROUTE ,
+      .nlmsg_type= op ? RTM_NEWROUTE : RTM_DELROUTE ,
+      // .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
+      .nlmsg_flags= op ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
@@ -174,8 +173,8 @@ void gateway(int op,const char *gw){
       .rtm_src_len=0,
       .rtm_tos=0,
       .rtm_table=RT_TABLE_MAIN,
-      .rtm_protocol=RTPROT_UNSPEC,
-      // .rtm_protocol= op ? RTPROT_BOOT : RTPROT_UNSPEC,
+      // .rtm_protocol=RTPROT_UNSPEC,
+      .rtm_protocol= op ? RTPROT_BOOT : RTPROT_UNSPEC,
       .rtm_scope=RT_SCOPE_UNIVERSE,
       .rtm_type=RTN_UNICAST,
       .rtm_flags=0
@@ -255,6 +254,8 @@ void show(){
       printf("dhcp ");
     else if(rtm->rtm_protocol==RTPROT_BOOT)
       printf("boot ");
+    else
+      assert(false);
     if(rtm->rtm_scope==RT_SCOPE_LINK)
       printf("link ");
     else if(rtm->rtm_scope==RT_SCOPE_UNIVERSE)
@@ -268,7 +269,6 @@ void show(){
 
     struct rtattr *p=(struct rtattr*)RTM_RTA(rtm);
     assert(p==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
-    // assert(RTM_RTA(rtm)==p);
 
     int rtl=RTM_PAYLOAD(nh);
 
@@ -414,19 +414,20 @@ int main(){
   gateway(DEL,gw);
   // gateway(ADD,"10.0.0.2");
 
-  char *server=json_load_server();
-  assert(server);
+  // char *server=json_load_server();
+  // assert(server);
   // printf("%s\n",server);
-  route(ADD,server,gw);
+  // route(ADD,server,gw);
 
   show();
   external();
 
-  route(DEL,server,gw);
-  free(server);
+  // route(DEL,server,gw);
+  // free(server);
+  // server=NULL;
 
   // gateway(DEL,"10.0.0.2");
-  // gateway(ADD,gw);
+  gateway(ADD,gw);
 
   // tun_flush();
   // tun_down();
