@@ -22,18 +22,15 @@ int fd=-1;
 char recvbuf[SZ]={};
 int len=0;
 
+char *server=NULL;
+char gw[INET_ADDRSTRLEN]={};
+
 // For RTM_NEWROUTE and RTM_DELROUTE
 typedef struct {
   struct nlmsghdr nh;
   struct rtmsg rt;
   char attrbuf[SZ]; // rtnetlink(3)
 } Req;
-
-// For RTM_GETROUTE only
-typedef struct {
-  struct nlmsghdr nh;
-  struct rtmsg rt;
-} Req_get;
 
 void init(){
   fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
@@ -160,11 +157,17 @@ void route(bool add,bool gw,const char *dst, const char *via){
 
 }
 
-void ask(){
+void ask_route(){
+
+  // For RTM_GETROUTE only
+  typedef struct {
+    struct nlmsghdr nh;
+    struct rtmsg rt;
+  } Req_getroute;
 
   // rtnetlink(3)
-  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req_get));
-  assert(sizeof(Req_get)==send(fd,&(Req_get){
+  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req_getroute));
+  assert(sizeof(Req_getroute)==send(fd,&(Req_getroute){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)), // netlink(3)
       .nlmsg_type=RTM_GETROUTE, // rtnetlink(7)
@@ -183,12 +186,12 @@ void ask(){
       .rtm_type=RTN_UNSPEC,
       .rtm_flags=0
     }
-  },sizeof(Req_get),0));
+  },sizeof(Req_getroute),0));
 }
 
-void show(){
+void print_route(){
 
-  ask();
+  ask_route();
   receive();
 
   // netlink(7)
@@ -289,9 +292,9 @@ void external(){
   while(getchar()!='\n'){}
 }
 
-void getgw(char *const s){
+void get_gateway(char *const s){
 
-  ask();
+  ask_route();
   receive();
 
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
@@ -362,29 +365,26 @@ void getgw(char *const s){
 
 }
 
-int main(){
-
-  init();
-  show();
+void set(){
 
   // tun_create();
   // tun_up();
   // tun_flush();
   // tun_addr("10.0.0.1");
 
-  char gw[INET_ADDRSTRLEN]={};
-  getgw(gw);
+  get_gateway(gw);
   assert(0==strcmp(gw,"192.168.1.1"));
   del_gateway(gw);
   // add_gateway("10.0.0.2");
 
-  char *server=json_load_server();
+  server=json_load_server();
   assert(server);
-  printf("%s\n",server);
+  // printf("%s\n",server);
   add_route(server,gw);
 
-  show();
-  external();
+}
+
+void reset(){
 
   del_route(server,gw);
   free(server);
@@ -392,12 +392,39 @@ int main(){
 
   // del_gateway("10.0.0.2");
   add_gateway(gw);
+  bzero(gw,INET_ADDRSTRLEN);
 
   // tun_flush();
   // tun_down();
   // tun_del();
 
-  show();
+}
+
+/*void print_link(){
+
+  // For RTM_GETROUTE only
+  typedef struct {
+    struct nlmsghdr nh;
+    struct rtmsg rt;
+  } Req_getroute;
+
+  clearbuf();
+
+}*/
+
+int main(){
+
+  init();
+
+  // print_link();
+
+  print_route();
+  set();
+  print_route();
+  external();
+  reset();
+  print_route();
+
   end();
 
 }
