@@ -627,14 +627,14 @@ void print_link(){
         case IFLA_AF_SPEC:printf("afspec_%lu? ",RTA_PAYLOAD(rta));break;
 
         /*
-        case IFLA_AF_SPEC:printf(". ");break;
+        case IFLA_X:printf(". ");break;
+        case IFLA_X:printf("afspec_%lu? ",RTA_PAYLOAD(rta));break;
         *
-        case IFLA_AF_SPEC:printf("[%lu]. ",RTA_PAYLOAD(rta));break;
-        case IFLA_AF_SPEC:bytes(RTA_DATA(rta),RTA_PAYLOAD(rta));break;
+        case IFLA_X:bytes(RTA_DATA(rta),RTA_PAYLOAD(rta));break;
         *
-        case IFLA_AF_SPEC:printf("[%u 0x%08X] ",*(unsigned*)RTA_DATA(rta),*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_AF_SPEC:printf("??? %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_AF_SPEC:printf("??? %s ",(char*)RTA_DATA(rta));break;
+        case IFLA_X:printf("[%u 0x%08X] ",*(unsigned*)RTA_DATA(rta),*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_X:printf("??? %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_X:printf("??? %s ",(char*)RTA_DATA(rta));break;
         */
 
         // default:printf("#%u# ",rta->rta_type);break;
@@ -684,15 +684,17 @@ void print_link(){
 int main(){
 
   init();
-
   print_link();
+  print_route();
 
-  // print_route();
-  // set();
-  // print_route();
-  // external();
-  // reset();
-  // print_route();
+  set();
+  print_link();
+  print_route();
+
+  external();
+  reset();
+  print_link();
+  print_route();
 
   end();
 
