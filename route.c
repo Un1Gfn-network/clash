@@ -428,6 +428,13 @@ void save_mtu(Mtu *m,unsigned v){
   m->v=v;
 }
 
+void bytes(const void *const p,const int n){
+  printf("[ ");
+  for(int i=0;i<n;++i)
+    printf("0x%02X ",*((unsigned char*)p+i));
+  printf("] ");
+}
+
 void print_link(){
 
   typedef struct {
@@ -514,18 +521,16 @@ void print_link(){
 
         // /usr/include/linux/if_link.h
         // https://elixir.bootlin.com/linux/v5.8.5/C/ident/IFLA_TXQLEN
+        // ip -d l
 
-        // printf(". ");break;
-        // printf("[%u] ",rta->rta_len);break;
-
-        case IFLA_IFNAME:printf("%s ",(const char*)RTA_DATA(rta));break;
+        /*case IFLA_IFNAME:printf("%s ",(const char*)RTA_DATA(rta));break;
         case IFLA_TXQLEN:printf("txq %u ",*(unsigned*)RTA_DATA(rta));break;
         case IFLA_OPERSTATE:switch(*(uint8_t*)RTA_DATA(rta)){
           case IF_OPER_UNKNOWN:printf("unk ");break;
           case IF_OPER_DOWN:printf("down ");break;
           case IF_OPER_UP:printf("up ");break;
           default:assert(false);
-        }break;
+        }break;*/
 
         /* https://www.kernel.org/doc/Documentation/networking/operstates.txt
         rta_len=5 little-endian
@@ -538,8 +543,8 @@ void print_link(){
         case IFLA_LINKMODE:
           assert( *(unsigned*)((char*)RTA_DATA(rta)+1) == 0x08000000 );
           switch(*(unsigned char*)RTA_DATA(rta)){
-            case 0x01:printf("M ");break;
-            case 0x00:printf("m ");break;
+            case 0x01:printf("M. ");break;
+            case 0x00:printf("m. ");break;
             default:assert(false);break;
           }
           break;
@@ -547,6 +552,27 @@ void print_link(){
         case IFLA_MTU:    save_mtu(&cur_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MIN_MTU:save_mtu(&min_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MAX_MTU:save_mtu(&max_mtu,*(unsigned*)RTA_DATA(rta));break;
+
+        case IFLA_GROUP:assert(0==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_PROMISCUITY:assert(0==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_NUM_TX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_GSO_MAX_SEGS:assert(65535==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_GSO_MAX_SIZE:assert(65536==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_NUM_RX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_CARRIER:printf(". ");break;
+        case IFLA_QDISC:printf("qdisc %s ",(char*)RTA_DATA(rta));break;
+
+
+        /*
+        case IFLA_QDISC:printf(". ");break;
+        *
+        case IFLA_QDISC:printf("[%u] ",rta->rta_len);break;
+        case IFLA_QDISC:bytes(RTA_DATA(rta),rta->rta_len);break;
+        *
+        case IFLA_QDISC:printf("[%u 0x%08X] ",*(unsigned*)RTA_DATA(rta),*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_QDISC:printf("??? %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_QDISC:printf("??? %s ",(char*)RTA_DATA(rta));break;
+        */
 
         default:printf("%u ",rta->rta_type);break;
 
