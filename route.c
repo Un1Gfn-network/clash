@@ -9,9 +9,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
-
 #include <net/if_arp.h>
-#include <net/if.h>
+
+// #include <net/if.h>
+#include <linux/if.h>
 
 // #define SZ 16384
 #define SZ 8192
@@ -454,34 +455,37 @@ void print_link(){
 
     struct ifinfomsg *ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
     assert(
-      ifm->ifi_family==AF_UNSPEC
+      ifm->ifi_family==AF_UNSPEC &&
       // ifm->ifi_type
       // ifm->ifi_index
       // ifm->ifi_flags
-      // ifm->ifi_change
+      ifm->ifi_change==0
     );
 
     printf("#%d ",ifm->ifi_index);
-
     // printf("[%u 0x%X] ",ifm->ifi_type,ifm->ifi_type);
     switch(ifm->ifi_type){
-      case ARPHRD_LOOPBACK:printf("ARPHRD_LOOPBACK ");break;
-      case ARPHRD_ETHER:printf("ARPHRD_ETHER ");break;
-      case ARPHRD_NONE:printf("ARPHRD_NONE ");break;
+      case ARPHRD_LOOPBACK:printf("loopback ");break;
+      case ARPHRD_ETHER:printf("ethernet ");break;
+      case ARPHRD_NONE:printf("noheader ");break;
       default:assert(false);break;
     }
-
     // printf("[0x%X] ",ifm->ifi_flags);
-    steal_flag(&(ifm->ifi_flags),IFF_UP,"UP");
-    steal_flag(&(ifm->ifi_flags),IFF_BROADCAST,"BROADCAST");
-    steal_flag(&(ifm->ifi_flags),IFF_LOOPBACK,"LOOPBACK");
-    steal_flag(&(ifm->ifi_flags),IFF_POINTOPOINT,"POINTOPOINT");
-    steal_flag(&(ifm->ifi_flags),IFF_RUNNING,"RUNNING");
-    steal_flag(&(ifm->ifi_flags),IFF_NOARP,"NOARP");
-    steal_flag(&(ifm->ifi_flags),IFF_PROMISC,"PROMISC");
-    steal_flag(&(ifm->ifi_flags),IFF_MULTICAST,"MULTICAST");
-    steal_flag(&(ifm->ifi_flags),0x10000,"0x10000");
+    #ifdef _NET_IF_H
+    #pragma GCC error "include <linux/if.h> instead of <net/if.h>"
+    #endif
+    steal_flag(&(ifm->ifi_flags),IFF_UP,"up");
+    steal_flag(&(ifm->ifi_flags),IFF_BROADCAST,"broadcast");
+    steal_flag(&(ifm->ifi_flags),IFF_LOOPBACK,"lo");
+    steal_flag(&(ifm->ifi_flags),IFF_POINTOPOINT,"p2p");
+    steal_flag(&(ifm->ifi_flags),IFF_RUNNING,"running");
+    steal_flag(&(ifm->ifi_flags),IFF_NOARP,"noarp");
+    steal_flag(&(ifm->ifi_flags),IFF_MULTICAST,"multicast");
+    steal_flag(&(ifm->ifi_flags),IFF_LOWER_UP,"l1up");
     assert(ifm->ifi_flags==0);
+
+    // rtattr
+
 
     printf("\n");
 
