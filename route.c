@@ -417,6 +417,17 @@ void pos(const void *const p){
   printf("%ld ",(char*)p-recvbuf);
 }
 
+typedef struct {
+  bool caught;
+  unsigned v;
+} Mtu;
+
+void save_mtu(Mtu *m,unsigned v){
+  assert(!(m->caught));
+  m->caught=true;
+  m->v=v;
+}
+
 void print_link(){
 
   typedef struct {
@@ -493,6 +504,11 @@ void print_link(){
     struct rtattr *rta=IFLA_RTA(ifm); // /usr/include/linux/if_link.h
     assert(rta==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct ifinfomsg))));
     int rtl=RTM_PAYLOAD(nh);
+
+    Mtu cur_mtu={};
+    Mtu min_mtu={};
+    Mtu max_mtu={};
+
     for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
       switch(rta->rta_type){
 
@@ -528,15 +544,25 @@ void print_link(){
           }
           break;
 
-        // case IFLA_MTU:printf("mtu %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_MTU:printf("mtu %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_MIN_MTU:printf("mtu_m %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_MAX_MTU:printf("mtu_M %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MTU:    save_mtu(&cur_mtu,*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MIN_MTU:save_mtu(&min_mtu,*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MAX_MTU:save_mtu(&max_mtu,*(unsigned*)RTA_DATA(rta));break;
 
         default:printf("%u ",rta->rta_type);break;
 
       }
     }
+
+    assert(
+      cur_mtu.caught &&
+      min_mtu.caught &&
+      max_mtu.caught
+    );
+    printf("mtu %u_(%u)_%u",
+      min_mtu.v,
+      cur_mtu.v,
+      max_mtu.v
+    );
 
     // Finish
     printf("\n");
