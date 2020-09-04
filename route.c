@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -191,7 +192,7 @@ void ask_route(){
   },sizeof(Req_getroute),0));
 }
 
-void steal_flag(unsigned int *flags,const unsigned int f,const char *const s){
+void steal_flag(unsigned *flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
@@ -412,6 +413,10 @@ void reset(){
 
 }
 
+void pos(const void *const p){
+  printf("%ld ",(char*)p-recvbuf);
+}
+
 void print_link(){
 
   typedef struct {
@@ -446,6 +451,8 @@ void print_link(){
 
     if(nh->nlmsg_type==NLMSG_DONE)
       break;
+
+    // Part 1 nlmsghdr
     assert(
       // nh->nlmsg_len
       nh->nlmsg_type==RTM_NEWLINK &&
@@ -453,27 +460,24 @@ void print_link(){
       nh->nlmsg_pid==(unsigned)getpid()
     );
 
+    // Part 2 ifinfomsg
     struct ifinfomsg *ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
-    assert(
+    /*assert(
       ifm->ifi_family==AF_UNSPEC &&
-      // ifm->ifi_type
-      // ifm->ifi_index
-      // ifm->ifi_flags
       ifm->ifi_change==0
     );
-
     printf("#%d ",ifm->ifi_index);
-    // printf("[%u 0x%X] ",ifm->ifi_type,ifm->ifi_type);
     switch(ifm->ifi_type){
+      // /usr/include/net/if_arp.h
       case ARPHRD_LOOPBACK:printf("loopback ");break;
       case ARPHRD_ETHER:printf("ethernet ");break;
       case ARPHRD_NONE:printf("noheader ");break;
       default:assert(false);break;
     }
-    // printf("[0x%X] ",ifm->ifi_flags);
     #ifdef _NET_IF_H
     #pragma GCC error "include <linux/if.h> instead of <net/if.h>"
     #endif
+    // /usr/include/linux/if.h
     steal_flag(&(ifm->ifi_flags),IFF_UP,"up");
     steal_flag(&(ifm->ifi_flags),IFF_BROADCAST,"broadcast");
     steal_flag(&(ifm->ifi_flags),IFF_LOOPBACK,"lo");
@@ -483,10 +487,58 @@ void print_link(){
     steal_flag(&(ifm->ifi_flags),IFF_MULTICAST,"multicast");
     steal_flag(&(ifm->ifi_flags),IFF_LOWER_UP,"l1up");
     assert(ifm->ifi_flags==0);
+    printf("||| ");*/
 
-    // rtattr
+    // Part 3 rtattr
+    struct rtattr *rta=IFLA_RTA(ifm); // /usr/include/linux/if_link.h
+    assert(rta==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct ifinfomsg))));
+    int rtl=RTM_PAYLOAD(nh);
+    for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
+      switch(rta->rta_type){
 
+        // /usr/include/linux/if_link.h
+        // https://elixir.bootlin.com/linux/v5.8.5/C/ident/IFLA_TXQLEN
 
+        // printf(". ");break;
+        // printf("[%u] ",rta->rta_len);break;
+
+        case IFLA_IFNAME:printf("%s ",(const char*)RTA_DATA(rta));break;
+        case IFLA_TXQLEN:printf("txq %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_OPERSTATE:switch(*(uint8_t*)RTA_DATA(rta)){
+          case IF_OPER_UNKNOWN:printf("unk ");break;
+          case IF_OPER_DOWN:printf("down ");break;
+          case IF_OPER_UP:printf("up ");break;
+          default:assert(false);
+        }break;
+
+        /* https://www.kernel.org/doc/Documentation/networking/operstates.txt
+        rta_len=5 little-endian
+        ---------------------
+        rta         rta+4
+        |           |
+        00 00 00 00 08
+        01
+        ---------------------*/
+        case IFLA_LINKMODE:
+          assert( *(unsigned*)((char*)RTA_DATA(rta)+1) == 0x08000000 );
+          switch(*(unsigned char*)RTA_DATA(rta)){
+            case 0x01:printf("M ");break;
+            case 0x00:printf("m ");break;
+            default:assert(false);break;
+          }
+          break;
+
+        // case IFLA_MTU:printf("mtu %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MTU:printf("mtu %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MIN_MTU:printf("mtu_m %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_MAX_MTU:printf("mtu_M %u ",*(unsigned*)RTA_DATA(rta));break;
+
+        default:printf("%u ",rta->rta_type);break;
+
+      }
+    }
+
+    // Finish
     printf("\n");
 
   }
