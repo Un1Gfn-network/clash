@@ -490,7 +490,7 @@ void print_link(){
     switch(ifm->ifi_type){
       // /usr/include/net/if_arp.h
       case ARPHRD_LOOPBACK:printf("loopback ");break;
-      case ARPHRD_ETHER:printf("Ethernet 10/100Mbps ");break;
+      case ARPHRD_ETHER:printf("ethernet ");break;
       case ARPHRD_NONE:printf("noheader ");break;
       default:assert(false);break;
     }
@@ -520,6 +520,12 @@ void print_link(){
     V32 max_mtu={};
     V32 carrier_up={};
     V32 carrier_dn={};
+
+    // 11:22:33:44:55:66
+    #define MAC_L (2*6+5)
+    char hwaddr[MAC_L+1]={};
+    char bcast[MAC_L+1]={};
+    int l=0;
 
     for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
       switch(rta->rta_type){
@@ -576,35 +582,39 @@ void print_link(){
           break;
 
         case IFLA_QDISC:printf("qdisc %s ",(char*)RTA_DATA(rta));break;
-        case IFLA_CARRIER_CHANGES:printf("[%lu]. ",RTA_PAYLOAD(rta));break;
+        case IFLA_CARRIER_CHANGES:printf("carrierchg_%lu? ",RTA_PAYLOAD(rta));break;
         case IFLA_PROTO_DOWN:assert(*((char*)RTA_DATA(rta)+4)==0x08);assert(*(unsigned*)RTA_DATA(rta)==0);break;
 
         case IFLA_CARRIER_UP_COUNT:  catch(&carrier_up,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_CARRIER_DOWN_COUNT:catch(&carrier_dn,*(unsigned*)RTA_DATA(rta));break;
 
-        case IFLA_MAP:printf("[%lu]. ",RTA_PAYLOAD(rta));break;
+        case IFLA_MAP:printf("map_%lu? ",RTA_PAYLOAD(rta));break;
 
-        case IFLA_ADDRESS:
-          printf("hwaddr ");
-          for(int i=0;i<5;++i)
-            printf("%02X:",*((unsigned char*)RTA_DATA(rta)+i));
-          printf("%02X ",*((unsigned char*)RTA_DATA(rta)+5));
-          break;
+        case IFLA_ADDRESS:{
+          l=0;
+          l+=sprintf(hwaddr,"%02X",*((unsigned char*)RTA_DATA(rta)));
+          for(int i=1;i<6;++i)
+            l+=sprintf(hwaddr+l,":%02X",*((unsigned char*)RTA_DATA(rta)+i));
+          assert(l==MAC_L);
+          // printf("%s ",hwaddr);
+        }break;
 
-        case IFLA_BROADCAST:
-          printf("bcast ");
-          for(int i=0;i<5;++i)
-            printf("%02X:",*((unsigned char*)RTA_DATA(rta)+i));
-          printf("%02X ",*((unsigned char*)RTA_DATA(rta)+5));
-          break;
+        case IFLA_BROADCAST:{
+          l=0;
+          l+=sprintf(bcast,"%02X",*((unsigned char*)RTA_DATA(rta)));
+          for(int i=1;i<6;++i)
+            l+=sprintf(bcast+l,":%02X",*((unsigned char*)RTA_DATA(rta)+i));
+          assert(l==MAC_L);
+          // printf("%s ",bcast);
+        }break;
 
         // /usr/include/linux/if_link.h
         // struct rtnl_link_stats
         // struct rtnl_link_stats64 
-        case IFLA_STATS64:printf("stats64. ");break;
-        case IFLA_STATS:printf("stats. ");break;
+        case IFLA_STATS64:printf("stats64_%lu? ",RTA_PAYLOAD(rta));break;
+        case IFLA_STATS:printf("stats_%lu? ",RTA_PAYLOAD(rta));break;
 
-        case IFLA_XDP:printf("xdp. ");break; // https://en.wikipedia.org/wiki/Express_Data_Path
+        case IFLA_XDP:printf("xdp_%lu? ",RTA_PAYLOAD(rta));break; // https://en.wikipedia.org/wiki/Express_Data_Path
 
         case IFLA_PERM_ADDRESS:
           printf("perm ");
@@ -613,7 +623,8 @@ void print_link(){
           printf("%02X ",*((unsigned char*)RTA_DATA(rta)+5));
           break;
 
-        case IFLA_AF_SPEC:printf("afspec. ");break;
+        case IFLA_LINKINFO:printf("linkinfo_%lu? ",RTA_PAYLOAD(rta));break;
+        case IFLA_AF_SPEC:printf("afspec_%lu? ",RTA_PAYLOAD(rta));break;
 
         /*
         case IFLA_AF_SPEC:printf(". ");break;
@@ -626,9 +637,19 @@ void print_link(){
         case IFLA_AF_SPEC:printf("??? %s ",(char*)RTA_DATA(rta));break;
         */
 
-        default:printf("%u ",rta->rta_type);break;
+        // default:printf("#%u# ",rta->rta_type);break;
+        default:assert(false);break;
 
       }
+    }
+    printf("\n");
+
+    if(strlen(hwaddr)){
+      assert(strlen(hwaddr)==MAC_L);
+      assert(strlen(bcast)==MAC_L);
+      printf("hwaddr %s ",hwaddr);
+      printf("bcast %s ",bcast);
+      printf("\n");
     }
 
     assert(
@@ -636,7 +657,7 @@ void print_link(){
       min_mtu.caught &&
       max_mtu.caught
     );
-    printf("mtu %u_(%u)_%u ",
+    printf("mtu %u<%u<%u ",
       min_mtu.v,
       cur_mtu.v,
       max_mtu.v
@@ -646,7 +667,7 @@ void print_link(){
       carrier_up.caught &&
       carrier_dn.caught
     );
-    printf("carrier cnt up_%u down_%u ",
+    printf("carrier cnt up %u down %u ",
       carrier_up.v,
       carrier_dn.v
     );
