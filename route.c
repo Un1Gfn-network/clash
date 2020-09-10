@@ -37,18 +37,10 @@ typedef struct {
   char attrbuf[SZ]; // rtnetlink(3)
 } Req;
 
-void init(){
-  fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
-  assert(fd==3);
-  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
-    .nl_family=AF_NETLINK,
-    .nl_pad=0,
-    .nl_pid=getpid(),
-    .nl_groups=0
-  }),sizeof(struct sockaddr_nl)));
-}
-
 void end(){
+  bzero(gw,INET_ADDRSTRLEN);
+  free(server);
+  server=NULL;
   assert(0==close(fd));
   fd=-1;
 }
@@ -385,13 +377,9 @@ void set(){
   // tun_flush();
   // tun_addr("10.0.0.1");
 
-  get_gateway(gw);
-  assert(0==strcmp(gw,"192.168.1.1"));
   del_gateway(gw);
   // add_gateway("10.0.0.2");
 
-  server=json_load_server();
-  assert(server);
   // printf("%s\n",server);
   add_route(server,gw);
 
@@ -400,12 +388,9 @@ void set(){
 void reset(){
 
   del_route(server,gw);
-  free(server);
-  server=NULL;
 
   // del_gateway("10.0.0.2");
   add_gateway(gw);
-  bzero(gw,INET_ADDRSTRLEN);
 
   // tun_flush();
   // tun_down();
@@ -679,6 +664,21 @@ void print_link(){
 
   clearbuf();
 
+}
+
+void init(){
+  fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
+  assert(fd==3);
+  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
+    .nl_family=AF_NETLINK,
+    .nl_pad=0,
+    .nl_pid=getpid(),
+    .nl_groups=0
+  }),sizeof(struct sockaddr_nl)));
+  server=json_load_server();
+  assert(server);
+  get_gateway(gw);
+  assert(0==strcmp(gw,"192.168.1.1"));
 }
 
 int main(){
