@@ -26,127 +26,95 @@ typedef enum {
 } OP;
 
 int sockfd=-1;
+char *server=NULL;
+const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
 
-void perform(OP op,struct rtentry *ep){
-  int request=-1;
-  if(op==DEL)
-    request=SIOCDELRT;
-  else if(op==ADD)
-    request=SIOCADDRT;
-  else
-    assert(false);
+#define add_route(IP,VIA) route(true,false,IP,VIA)
+#define del_route(IP,VIA) route(false,false,IP,VIA)
+#define add_gateway(VIA) route(true,true,NULL,VIA)
+#define del_gateway(VIA) route(false,true,NULL,VIA)
+void route(bool add,bool net,const char *dst,const char *gw){
+
+  assert( ( (bool)dst ^ (bool)net ) == 1 );
+  assert(gw);
+  struct rtentry e={};
+
+  // Destination
+  *AT(e.rt_dst)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0,
+    .sin_addr={INADDR_ANY}
+  };
+  if(!net)
+    assert(0!=inet_aton(dst,&(AT(e.rt_dst)->sin_addr)));
+
+  // Gateway
+  *AT(e.rt_gateway)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0
+  };
+  assert(0!=inet_aton(gw,&(AT(e.rt_gateway)->sin_addr)));
+
+  // Genmask
+  *AT(e.rt_genmask)=(struct sockaddr_in){
+    .sin_family=AF_INET,
+    .sin_port=0,
+    .sin_addr={net?INADDR_ANY:INADDR_BROADCAST}
+  };
+
+  e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_STATIC|(net?0:RTF_HOST) ;
+  e.rt_dev=DEV;
+
   errno=0;
-  if(-1==ioctl(sockfd,request,ep)){
+  if(-1==ioctl(sockfd,add?SIOCADDRT:SIOCDELRT,&e)){
     const int err=errno;
     printf("%d %s\n",err,strerror(err));
     assert(false);    
   }
-  printf("done\n");
-}
-
-void net(OP op,const char *gw){
-
-  assert(gw);
-  struct rtentry e={};
-
-  // Destination
-  *AT(e.rt_dst)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0,
-    .sin_addr={INADDR_ANY}
-  };
-
-  // Gateway
-  *AT(e.rt_gateway)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0
-  };
-  assert(0!=inet_aton(gw,&(AT(e.rt_gateway)->sin_addr)));
-
-  // Genmask
-  *AT(e.rt_genmask)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0,
-    .sin_addr={INADDR_ANY}
-  };
-
-  e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_STATIC ;
-  e.rt_dev=DEV;
-  perform(op,&e);
+       // printf("done\n");
 
 }
 
-void host(OP op,const char *const dst,const char *gw){
-
-  assert(dst);
-  assert(gw);
-  struct rtentry e={};
-
-  // Destination
-  *AT(e.rt_dst)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0
-  };
-  assert(0!=inet_aton(dst,&(AT(e.rt_dst)->sin_addr)));
-
-  // Gateway
-  *AT(e.rt_gateway)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0
-  };
-  assert(0!=inet_aton(gw,&(AT(e.rt_gateway)->sin_addr)));
-
-  // Genmask
-  *AT(e.rt_genmask)=(struct sockaddr_in){
-    .sin_family=AF_INET,
-    .sin_port=0,
-    .sin_addr={INADDR_BROADCAST}
-  };
-
-  e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_HOST|RTF_STATIC ;
-  e.rt_dev=DEV;
-  perform(op,&e);
-
-}
-
-#define del_route(IP,VIA) host(DEL,IP,VIA)
-#define add_route(IP,VIA) host(ADD,IP,VIA)
-#define del_gateway(VIA) net(DEL,VIA)
-#define add_gateway(VIA) net(ADD,VIA)
-
-int main(const int argc,const char **argv){
-
-  if( argc!=2 || !argv[1] ){
-    printf("\n  %s <on|off>\n\n",argv[0]);
-    exit(1);
-  }
-
+void set(){
   assert(0==getuid());
+  del_gateway(gateway);
+  add_route(server,gateway);
+  // add_gateway("10.0.0.2");
+}
 
+void reset(){
+  assert(0==getuid());
+  del_route(server,gateway);
+  add_gateway(gateway);
+  // del_gateway("10.0.0.2");
+}
+
+void init(){
   sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
-  assert(sockfd>=2);
-  char *server=json_load_server();
+  assert(sockfd==3);
+  server=json_load_server();
   assert(server);
-
   // printf("%s\n",server);
-  // exit(0);
+}
 
-  if(0==strcmp(argv[1],"on")){
-    del_gateway("192.168.1.1");
-    add_route(server,"192.168.1.1");
-    add_gateway("10.0.0.2");
-  }else if(0==strcmp(argv[1],"off")){
-    del_route(server,"192.168.1.1");
-    add_gateway("192.168.1.1");
-    del_gateway("10.0.0.2");
-  }else{
-    assert(false);
-  }
-
+void end(){
   free(server);
   server=NULL;
   close(sockfd);
   sockfd=0;
+}
+
+int main(){
+
+  init();
+
+  set();
+
+  getchar();
+
+  reset();
+
+  end();
 
   return 0;
 }
