@@ -123,7 +123,7 @@ void route(bool add,bool gw,const char *dst,const char *via){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
       .nlmsg_type= add ? RTM_NEWROUTE : RTM_DELROUTE ,
-      .nlmsg_flags= add ? (NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE) : (NLM_F_REQUEST|NLM_F_ACK) ,
+      .nlmsg_flags=(NLM_F_REQUEST|NLM_F_ACK|(add?(NLM_F_EXCL|NLM_F_CREATE):0)),
       .nlmsg_seq=0,
       .nlmsg_pid=0
     },
