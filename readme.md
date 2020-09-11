@@ -1,3 +1,52 @@
+tun2socks
+* [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
+* <del>[Add UDP forwarding w/ badvpn-udpgw](https://github.com/ambrop72/badvpn/wiki/Tun2socks#udp-forwarding)</del>
+* ambrop72/badvpn [`--socks5-udp`](https://github.com/ambrop72/badvpn/blob/master/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--socks5-udp%22%29) (release too old, build badvpn-git)
+* shadowsocks/badvpn [`--enable-udprelay`](https://github.com/shadowsocks/badvpn/blob/shadowsocks-android/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--enable-udprelay%22%29)
+* [go-tun2socks](https://github.com/eycorsican/go-tun2socks)
+
+[Android tcpdump](https://www.androidtcpdump.com/android-tcpdump/compile)
+
+```bash
+cd /tmp
+mkdir tcpdump
+cd tcpdump
+# sudo pacman -Syu aarch64-linux-gnu-gcc
+proxychains wget https://www.tcpdump.org/release/tcpdump-4.9.3.tar.gz
+proxychains wget https://www.tcpdump.org/release/libpcap-1.9.1.tar.gz
+tar xf libpcap-1.9.1.tar.gz
+tar xf tcpdump-4.9.3.tar.gz
+
+cd /tmp/tcpdump/libpcap-1.9.1/
+export CC=/usr/bin/aarch64-linux-gnu-gcc
+./configure --host=aarch64-linux --with-pcap=linux
+make -j4
+
+cd /tmp/tcpdump/tcpdump-4.9.3
+export CC=/usr/bin/aarch64-linux-gnu-gcc
+export ac_cs_linux_vers=4 # Android
+export CFLAGS=-static
+export CPPFLAGS=-static
+export LDFLAGS=-static
+./configure --host=aarch64-linux --disable-ipv6
+make -j4
+
+adb push tcpdump /sdcard/Download/
+adb shell
+# su
+cd /data/data/com.termux/files/home/
+mv /sdcard/Download/tcpdump ./
+chmod +x tcpdump
+./tcpdump -i any -w android.pcap
+mv android.pcap /sdcard/Download
+# exit
+exit
+
+cd /tmp/tcpdump
+adb pull /sdcard/Download/android.pcap
+
+```
+
 Q
 
 * tell dhcpcd to refresh
@@ -5,8 +54,10 @@ Q
   * IFLA_MAP
   * IFLA_LINKINFO
 
+little-endian
+
 ```
-rta_len=5 little-endian
+rta_len=5 
 
 rta         rta+4
 |           |
@@ -14,23 +65,14 @@ rta         rta+4
 01
 ```
 
-[DNS黑魔法](https://medium.com/@TachyonDevel/%E6%BC%AB%E8%B0%88%E5%90%84%E7%A7%8D%E9%BB%91%E7%A7%91%E6%8A%80%E5%BC%8F-dns-%E6%8A%80%E6%9C%AF%E5%9C%A8%E4%BB%A3%E7%90%86%E7%8E%AF%E5%A2%83%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8-62c50e58cbd0)
-[fake-ip](https://blog.skk.moe/post/what-happend-to-dns-in-proxy/)
+DNS
+* [DNS黑魔法](https://medium.com/@TachyonDevel/%E6%BC%AB%E8%B0%88%E5%90%84%E7%A7%8D%E9%BB%91%E7%A7%91%E6%8A%80%E5%BC%8F-dns-%E6%8A%80%E6%9C%AF%E5%9C%A8%E4%BB%A3%E7%90%86%E7%8E%AF%E5%A2%83%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8-62c50e58cbd0)
+* [fake-ip](https://blog.skk.moe/post/what-happend-to-dns-in-proxy/)
 
-[libnl](https://www.infradead.org/~tgr/libnl/)
-
-[rtnetlink tutorial](https://www.linuxjournal.com/article/8498)
-
-[netlink tutorial](https://www.linuxjournal.com/article/7356)
-
-```bash
-alacritty -t   'netlink(3)' -e man 3 netlink &
-alacritty -t 'rtnetlink(3)' -e man 3 rtnetlink &
-alacritty -t   'netlink(7)' -e man 7 netlink &
-alacritty -t 'rtnetlink(7)' -e man 7 rtnetlink &
-```
-
-[Add UDP forwarding w/ badvpn-udpgw](https://github.com/ambrop72/badvpn/wiki/Tun2socks#udp-forwarding)
+netlink
+* [libnl](https://www.infradead.org/~tgr/libnl/)
+* [rtnetlink tutorial](https://www.linuxjournal.com/article/8498)
+* [netlink tutorial](https://www.linuxjournal.com/article/7356)
 
 Clash
 * [config.yaml](https://lancellc.gitbook.io/clash/)
@@ -53,9 +95,6 @@ That may require some code doing [TCP Reassembly](https://wiki.wireshark.org/TCP
 like [`tun2socks`](https://github.com/ambrop72/badvpn/wiki/Tun2socks).
 
 [tproxy](https://www.kernel.org/doc/html/latest/networking/tproxy.html)
-
-tun2socks
-* [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
 
 http://127.0.0.1:6170/proxies
 
@@ -138,6 +177,8 @@ badvpn-tun2socks \
   --netif-netmask 255.255.255.0 \
   --socks-server-addr 127.0.0.1:1080
 # --udpgw-remote-server-addr 127.0.0.1:7300
+# --socks5-udp
+# --enable-udprelay
 ```
 
 ## Stop VPN
