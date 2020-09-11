@@ -15,6 +15,8 @@
 // #include <net/if.h>
 #include <linux/if.h>
 
+// 11:22:33:44:55:66
+#define MAC_L (2*6+5)
 // #define SZ 16384
 #define SZ 8192
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
@@ -420,13 +422,21 @@ void bytes(const void *const p,const int n){
   printf("] ");
 }
 
+void mac_colon(void *p,char *s){
+  int l=0;
+  l+=sprintf(s,"%02x",*((unsigned char*)p));
+  for(int i=1;i<6;++i)
+    l+=sprintf(s+l,":%02x",*((unsigned char*)p+i));
+  assert(l==MAC_L);
+  // printf("%s ",s);
+}
+
 void print_link(){
 
   typedef struct {
     struct nlmsghdr nh;
     struct ifinfomsg ifi;
   } Req_getlink;
-
   assert(NLMSG_LENGTH(sizeof(struct ifinfomsg))==sizeof(Req_getlink));
   assert(sizeof(Req_getlink)==send(fd,&(Req_getlink){
     .nh={
@@ -506,11 +516,9 @@ void print_link(){
     V32 carrier_up={};
     V32 carrier_dn={};
 
-    // 11:22:33:44:55:66
-    #define MAC_L (2*6+5)
     char hwaddr[MAC_L+1]={};
     char bcast[MAC_L+1]={};
-    int l=0;
+    char perm[MAC_L+1]={};
 
     for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
       switch(rta->rta_type){
@@ -520,96 +528,58 @@ void print_link(){
         // ip -d l
 
         case IFLA_IFNAME:printf("%s ",(const char*)RTA_DATA(rta));break;
-        case IFLA_TXQLEN:printf("txq %u ",*(unsigned*)RTA_DATA(rta));break;
+
         case IFLA_OPERSTATE:switch(*(uint8_t*)RTA_DATA(rta)){
           case IF_OPER_UNKNOWN:printf("unk ");break;
           case IF_OPER_DOWN:printf("down ");break;
           case IF_OPER_UP:printf("up ");break;
           default:assert(false);
         }break;
-
-        /* https://www.kernel.org/doc/Documentation/networking/operstates.txt
-        rta_len=5 little-endian
-        ---------------------
-        rta         rta+4
-        |           |
-        00 00 00 00 08
-        01
-        ---------------------*/
-        case IFLA_LINKMODE:
-          assert(1==RTA_PAYLOAD(rta));
-          switch(*(unsigned char*)RTA_DATA(rta)){
-            case 0x01:printf("M ");break;
-            case 0x00:printf("m ");break;
-            default:assert(false);break;
-          }
-          break;
+        case IFLA_LINKMODE:switch(*(unsigned char*)RTA_DATA(rta)){
+          case 0x01:printf("M ");break;
+          case 0x00:printf("m ");break;
+          default:assert(false);break;
+        }break;
+        case IFLA_CARRIER:switch(*(unsigned char*)RTA_DATA(rta)){
+          case 0x01:printf("C ");break;
+          case 0x00:printf("c ");break;
+          default:assert(false);break;
+        }
+        break;
 
         case IFLA_MTU:    catch(&cur_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MIN_MTU:catch(&min_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MAX_MTU:catch(&max_mtu,*(unsigned*)RTA_DATA(rta));break;
-
-        case IFLA_GROUP:
-        case IFLA_PROMISCUITY:
-          assert(0==*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_NUM_TX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_GSO_MAX_SEGS:assert(65535==*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_GSO_MAX_SIZE:assert(65536==*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_NUM_RX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
-
-        case IFLA_CARRIER:
-          assert(1==RTA_PAYLOAD(rta));
-          switch(*(unsigned char*)RTA_DATA(rta)){
-            case 0x01:printf("C ");break;
-            case 0x00:printf("c ");break;
-            default:assert(false);break;
-          }
-          break;
-
-        case IFLA_QDISC:printf("qdisc %s ",(char*)RTA_DATA(rta));break;
-        case IFLA_CARRIER_CHANGES:printf("carrierchg_%lu? ",RTA_PAYLOAD(rta));break;
-        case IFLA_PROTO_DOWN:assert(*((char*)RTA_DATA(rta)+4)==0x08);assert(*(unsigned*)RTA_DATA(rta)==0);break;
-
         case IFLA_CARRIER_UP_COUNT:  catch(&carrier_up,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_CARRIER_DOWN_COUNT:catch(&carrier_dn,*(unsigned*)RTA_DATA(rta));break;
 
-        case IFLA_MAP:printf("map_%lu? ",RTA_PAYLOAD(rta));break;
+        // 1-byte
+        case IFLA_PROTO_DOWN:assert(*(unsigned char*)RTA_DATA(rta)==0);break;
+        // 4-byte
+        case IFLA_GROUP:
+        case IFLA_PROMISCUITY:assert(0==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_NUM_TX_QUEUES:
+        case IFLA_NUM_RX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_GSO_MAX_SEGS:assert(65535==*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_GSO_MAX_SIZE:assert(65536==*(unsigned*)RTA_DATA(rta));break;
 
-        case IFLA_ADDRESS:{
-          l=0;
-          l+=sprintf(hwaddr,"%02X",*((unsigned char*)RTA_DATA(rta)));
-          for(int i=1;i<6;++i)
-            l+=sprintf(hwaddr+l,":%02X",*((unsigned char*)RTA_DATA(rta)+i));
-          assert(l==MAC_L);
-          // printf("%s ",hwaddr);
-        }break;
+        case IFLA_TXQLEN:printf("txq %u ",*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_QDISC:printf("qdisc %s ",(char*)RTA_DATA(rta));break;
 
-        case IFLA_BROADCAST:{
-          l=0;
-          l+=sprintf(bcast,"%02X",*((unsigned char*)RTA_DATA(rta)));
-          for(int i=1;i<6;++i)
-            l+=sprintf(bcast+l,":%02X",*((unsigned char*)RTA_DATA(rta)+i));
-          assert(l==MAC_L);
-          // printf("%s ",bcast);
-        }break;
+        case IFLA_ADDRESS:     mac_colon(RTA_DATA(rta),hwaddr);break;
+        case IFLA_BROADCAST:   mac_colon(RTA_DATA(rta),bcast);break;
+        case IFLA_PERM_ADDRESS:mac_colon(RTA_DATA(rta),perm);break;
 
         // /usr/include/linux/if_link.h
         // struct rtnl_link_stats
         // struct rtnl_link_stats64 
-        case IFLA_STATS64:printf("stats64_%lu? ",RTA_PAYLOAD(rta));break;
-        case IFLA_STATS:printf("stats_%lu? ",RTA_PAYLOAD(rta));break;
-
-        case IFLA_XDP:printf("xdp_%lu? ",RTA_PAYLOAD(rta));break; // https://en.wikipedia.org/wiki/Express_Data_Path
-
-        case IFLA_PERM_ADDRESS:
-          printf("perm ");
-          for(int i=0;i<5;++i)
-            printf("%02X:",*((unsigned char*)RTA_DATA(rta)+i));
-          printf("%02X ",*((unsigned char*)RTA_DATA(rta)+5));
-          break;
-
-        case IFLA_LINKINFO:printf("linkinfo_%lu? ",RTA_PAYLOAD(rta));break;
-        case IFLA_AF_SPEC:printf("afspec_%lu? ",RTA_PAYLOAD(rta));break;
+        case IFLA_STATS64:printf("(stats64_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_STATS:printf("(stats_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_XDP:printf("(xdp_%lu) ",RTA_PAYLOAD(rta));break; // https://en.wikipedia.org/wiki/Express_Data_Path
+        case IFLA_LINKINFO:printf("(linkinfo_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_AF_SPEC:printf("(afspec_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_MAP:printf("(map_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_CARRIER_CHANGES:printf("(carrierchg_%lu) ",RTA_PAYLOAD(rta));break;
 
         /*
         case IFLA_X:printf(". ");break;
@@ -629,13 +599,20 @@ void print_link(){
     }
     printf("\n");
 
+    bool addr=false;
+    if(strlen(perm)){
+      assert(strlen(perm)==MAC_L);
+      printf("perm %s ",perm);
+      addr=true;
+    }
     if(strlen(hwaddr)){
       assert(strlen(hwaddr)==MAC_L);
       assert(strlen(bcast)==MAC_L);
       printf("hwaddr %s ",hwaddr);
       printf("bcast %s ",bcast);
-      printf("\n");
+      addr=true;
     }
+    addr?printf("\n"):0;
 
     assert(
       cur_mtu.caught &&
