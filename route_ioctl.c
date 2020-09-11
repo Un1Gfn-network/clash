@@ -71,7 +71,6 @@ void route(bool add,bool net,const char *dst,const char *gw){
     printf("%d %s\n",err,strerror(err));
     assert(false);    
   }
-       // printf("done\n");
 
 }
 

@@ -452,7 +452,7 @@ void print_link(){
       .ifi_type=0,
       .ifi_index=0,
       .ifi_flags=0,
-      .ifi_change=0,
+      .ifi_change=0xFFFFFFFF,
     }
   },sizeof(Req_getlink),0));
 
@@ -503,7 +503,6 @@ void print_link(){
     steal_flag(&(ifm->ifi_flags),IFF_LOWER_UP,"l1up");
     assert(ifm->ifi_flags==0);
     printf("\n");
-    // printf("||| ");
 
     // Part 3 rtattr
     struct rtattr *rta=IFLA_RTA(ifm); // /usr/include/linux/if_link.h
@@ -513,6 +512,7 @@ void print_link(){
     V32 cur_mtu={};
     V32 min_mtu={};
     V32 max_mtu={};
+    V32 carrier_ch={};
     V32 carrier_up={};
     V32 carrier_dn={};
 
@@ -529,6 +529,9 @@ void print_link(){
 
         case IFLA_IFNAME:printf("%s ",(const char*)RTA_DATA(rta));break;
 
+        // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net
+        // /sys/class/net/<iface>/operstate (RFC2863)
+        // https://www.kernel.org/doc/Documentation/networking/operstates.txt
         case IFLA_OPERSTATE:switch(*(uint8_t*)RTA_DATA(rta)){
           case IF_OPER_UNKNOWN:printf("unk ");break;
           case IF_OPER_DOWN:printf("down ");break;
@@ -536,22 +539,25 @@ void print_link(){
           default:assert(false);
         }break;
         case IFLA_LINKMODE:switch(*(unsigned char*)RTA_DATA(rta)){
-          case 0x01:printf("M ");break;
-          case 0x00:printf("m ");break;
+          case IF_LINK_MODE_DEFAULT:printf("default ");break;
+          case IF_LINK_MODE_DORMANT:printf("dormant ");break;
           default:assert(false);break;
         }break;
+        // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net
         case IFLA_CARRIER:switch(*(unsigned char*)RTA_DATA(rta)){
-          case 0x01:printf("C ");break;
-          case 0x00:printf("c ");break;
+          case 0:printf("physical down ");break;
+          case 1:printf("physical up ");break;
           default:assert(false);break;
         }
         break;
 
+        // /sys/class/net/<iface>/carrier_changes
+        case IFLA_CARRIER_CHANGES:   catch(&carrier_ch,*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_CARRIER_UP_COUNT:  catch(&carrier_up,*(unsigned*)RTA_DATA(rta));break;
+        case IFLA_CARRIER_DOWN_COUNT:catch(&carrier_dn,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MTU:    catch(&cur_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MIN_MTU:catch(&min_mtu,*(unsigned*)RTA_DATA(rta));break;
         case IFLA_MAX_MTU:catch(&max_mtu,*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_CARRIER_UP_COUNT:  catch(&carrier_up,*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_CARRIER_DOWN_COUNT:catch(&carrier_dn,*(unsigned*)RTA_DATA(rta));break;
 
         // 1-byte
         case IFLA_PROTO_DOWN:assert(*(unsigned char*)RTA_DATA(rta)==0);break;
@@ -564,7 +570,7 @@ void print_link(){
         case IFLA_GSO_MAX_SIZE:assert(65536==*(unsigned*)RTA_DATA(rta));break;
 
         case IFLA_TXQLEN:printf("txq %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_QDISC:printf("qdisc %s ",(char*)RTA_DATA(rta));break;
+        case IFLA_QDISC:printf("%s ",(char*)RTA_DATA(rta));break;
 
         case IFLA_ADDRESS:     mac_colon(RTA_DATA(rta),hwaddr);break;
         case IFLA_BROADCAST:   mac_colon(RTA_DATA(rta),bcast);break;
@@ -579,18 +585,8 @@ void print_link(){
         case IFLA_LINKINFO:printf("(linkinfo_%lu) ",RTA_PAYLOAD(rta));break;
         case IFLA_AF_SPEC:printf("(afspec_%lu) ",RTA_PAYLOAD(rta));break;
         case IFLA_MAP:printf("(map_%lu) ",RTA_PAYLOAD(rta));break;
-        case IFLA_CARRIER_CHANGES:printf("(carrierchg_%lu) ",RTA_PAYLOAD(rta));break;
 
-        /*
-        case IFLA_X:printf(". ");break;
-        case IFLA_X:printf("afspec_%lu? ",RTA_PAYLOAD(rta));break;
-        *
-        case IFLA_X:bytes(RTA_DATA(rta),RTA_PAYLOAD(rta));break;
-        *
-        case IFLA_X:printf("[%u 0x%08X] ",*(unsigned*)RTA_DATA(rta),*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_X:printf("??? %u ",*(unsigned*)RTA_DATA(rta));break;
-        case IFLA_X:printf("??? %s ",(char*)RTA_DATA(rta));break;
-        */
+        // case IFLA_XXX:bytes(RTA_DATA(rta),RTA_PAYLOAD(rta));break;
 
         // default:printf("#%u# ",rta->rta_type);break;
         default:assert(false);break;
@@ -619,7 +615,7 @@ void print_link(){
       min_mtu.caught &&
       max_mtu.caught
     );
-    printf("mtu %u<%u<%u ",
+    printf("mtu %u < %u < %u \n",
       min_mtu.v,
       cur_mtu.v,
       max_mtu.v
@@ -627,15 +623,17 @@ void print_link(){
 
     assert(
       carrier_up.caught &&
-      carrier_dn.caught
+      carrier_dn.caught &&
+      carrier_ch.caught
     );
-    printf("carrier cnt up %u down %u ",
+    printf("carrier change up %u down %u total %u \n",
       carrier_up.v,
-      carrier_dn.v
+      carrier_dn.v,
+      carrier_ch.v
     );
 
     // Finish
-    printf("\n\n");
+    printf("\n");
 
   }
 
