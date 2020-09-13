@@ -29,7 +29,8 @@ convert:convert.c
 ###
 
 jsrv.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c)
-route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c)
+route_ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
+route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c libbsd)
 route.out: LIBS:=$(shell pkg-config --libs json-c)
 
 route_ioctl.out:def.h jsrv.o route_ioctl.o

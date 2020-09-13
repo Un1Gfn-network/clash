@@ -16,10 +16,14 @@
 // #include <net/if.h> // netdevice(7) but no IFF_LOWER_UP
 #include <linux/if.h> // provides IFF_LOWER_UP
 
+#include <bsd/stdlib.h>
+
 #include "def.h"
 
-#define AT(x) ((struct sockaddr_in*)(&(x)))
+#define SZ 32
 #define DEV "wlp2s0"
+
+#define AT(x) ((struct sockaddr_in*)(&(x)))
 
 // #define STR0(x) #x
 // #define STR(x) STR0(x)
@@ -251,6 +255,23 @@ void conf(){
   }
 }
 
+void humanize(long n){
+  int scale=0;
+  char buf[SZ]={};
+  for(;;){
+    bzero(buf,SZ);
+    assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
+    if(0==strncmp(buf,"0.0",3))
+      break;
+    ++scale;
+  }
+  scale>0?(scale-=1):0;
+  bzero(buf,SZ);
+  assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
+  printf("%s ",buf);
+  fflush(stdout);
+}
+
 void conf2(){
   struct ifaddrs *ifa=NULL;
   assert(0==getifaddrs(&ifa));
@@ -277,12 +298,10 @@ void conf2(){
       );
       struct rtnl_link_stats *stats=i->ifa_data;
       assert(stats);
-      printf("tx %u %uB rx %u %uB ",
-        stats->tx_packets,
-        stats->tx_bytes,
-        stats->rx_packets,
-        stats->rx_bytes
-      );
+      printf("tx %u ",stats->tx_packets);
+      humanize(stats->tx_bytes);
+      printf("rx %u ",stats->rx_packets);
+      humanize(stats->rx_bytes);
     }else{
       i->ifa_addr?addr(NULL,i->ifa_addr):0;
       i->ifa_netmask?addr("mask",i->ifa_netmask):0;
