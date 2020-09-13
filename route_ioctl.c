@@ -9,12 +9,12 @@
 #include <unistd.h>
 
 #include <arpa/inet.h> // inet_ntop
+#include <linux/if_link.h> // struct rtnl_link_stats
+#include <net/if_arp.h> // ARPHRD_* device type
+#include <net/route.h> // struct rtentry
 
 // #include <net/if.h> // netdevice(7) but no IFF_LOWER_UP
 #include <linux/if.h> // provides IFF_LOWER_UP
-
-#include <net/if_arp.h> // ARPHRD_* device type
-#include <net/route.h> // struct rtentry
 
 #include "def.h"
 
@@ -129,8 +129,10 @@ void steal_flag_u32(unsigned *flags,const unsigned f,const char *const s){
 void addr(const char *t,struct sockaddr *addr){
 
   assert(addr);
-  if(addr->sa_family==AF_PACKET)
+  if(addr->sa_family==AF_PACKET){
+    printf("%s (pkt) ",t);
     return;
+  }
 
   // printf("[%d] \n",sin->sin_family);
   struct sockaddr_in *sin=(struct sockaddr_in*)(addr);
@@ -266,12 +268,28 @@ void conf2(){
     steal_flag_u32(&(i->ifa_flags),IFF_MULTICAST,"multicast");
     steal_flag_u32(&(i->ifa_flags),IFF_LOWER_UP,"l1up");
     assert(i->ifa_flags==0);
-    i->ifa_addr?addr(NULL,i->ifa_addr):0;
-    i->ifa_netmask?addr("mask",i->ifa_netmask):0;
 
-    assert(!(flags&IFF_BROADCAST&IFF_POINTOPOINT)); // Mutually exclusive
-    i->ifa_broadaddr?addr("bcast",i->ifa_broadaddr):0;
-    i->ifa_dstaddr?addr("dst",i->ifa_dstaddr):0;
+    if(i->ifa_addr&&i->ifa_addr->sa_family==AF_PACKET){
+      assert(
+        !(i->ifa_netmask) &&
+        i->ifa_broadaddr->sa_family==AF_PACKET &&
+        i->ifa_dstaddr->sa_family==AF_PACKET
+      );
+      struct rtnl_link_stats *stats=i->ifa_data;
+      assert(stats);
+      printf("tx %u %uB rx %u %uB ",
+        stats->tx_packets,
+        stats->tx_bytes,
+        stats->rx_packets,
+        stats->rx_bytes
+      );
+    }else{
+      i->ifa_addr?addr(NULL,i->ifa_addr):0;
+      i->ifa_netmask?addr("mask",i->ifa_netmask):0;
+      assert(!(flags&IFF_BROADCAST&IFF_POINTOPOINT)); // Mutually exclusive
+      i->ifa_broadaddr?addr("bcast",i->ifa_broadaddr):0;
+      i->ifa_dstaddr?addr("dst",i->ifa_dstaddr):0;
+    }
 
     printf("\n");
 
