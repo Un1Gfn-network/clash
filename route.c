@@ -12,13 +12,14 @@
 #include <linux/rtnetlink.h>
 #include <net/if_arp.h>
 
-// #include <net/if.h>
 #include <linux/if.h>
 
 // 11:22:33:44:55:66
 #define MAC_L (2*6+5)
+
 // #define SZ 16384
 #define SZ 8192
+
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
 // jsrv.c
@@ -372,34 +373,6 @@ void get_gateway(char *const s){
 
 }
 
-void set(){
-
-  // tun_create();
-  // tun_up();
-  // tun_flush();
-  // tun_addr("10.0.0.1");
-
-  del_gateway(gw);
-  // add_gateway("10.0.0.2");
-
-  // printf("%s\n",server);
-  add_route(server,gw);
-
-}
-
-void reset(){
-
-  del_route(server,gw);
-
-  // del_gateway("10.0.0.2");
-  add_gateway(gw);
-
-  // tun_flush();
-  // tun_down();
-  // tun_del();
-
-}
-
 void pos(const void *const p){
   printf("%ld ",(char*)p-recvbuf);
 }
@@ -422,13 +395,14 @@ void bytes(const void *const p,const int n){
   printf("] ");
 }
 
-void mac_colon(void *p,char *s){
-  int l=0;
+void mac_colon(const void *const p,char *s){
+  const unsigned char *const h=p;
+  sprintf(s,"%02x:%02x:%02x:%02x:%02x:%02x",h[0],h[1],h[2],h[3],h[4],h[5]);
+  /*int l=0;
   l+=sprintf(s,"%02x",*((unsigned char*)p));
   for(int i=1;i<6;++i)
     l+=sprintf(s+l,":%02x",*((unsigned char*)p+i));
-  assert(l==MAC_L);
-  // printf("%s ",s);
+  assert(l==MAC_L);*/
 }
 
 void print_link(){
@@ -656,20 +630,48 @@ void init(){
   assert(0==strcmp(gw,"192.168.1.1"));
 }
 
+void set(){
+
+  tun_create("tun0");
+  // tun_up();
+  // tun_flush();
+  // tun_addr("10.0.0.1");
+
+  // del_gateway(gw);
+  // add_gateway("10.0.0.2");
+
+  // printf("%s\n",server);
+  // add_route(server,gw);
+
+}
+
+void reset(){
+
+  // del_route(server,gw);
+
+  // del_gateway("10.0.0.2");
+  // add_gateway(gw);
+
+  // tun_flush();
+  // tun_down();
+  // tun_del("tun0");
+
+}
+
 int main(){
 
   init();
-  print_link();
-  print_route();
+  // print_link();
+  // print_route();
 
   set();
-  print_link();
-  print_route();
+  // print_link();
+  // print_route();
 
-  external();
-  reset();
-  print_link();
-  print_route();
+  // external();
+  // reset();
+  // print_link();
+  // print_route();
 
   end();
 
