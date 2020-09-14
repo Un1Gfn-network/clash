@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ioctl.h>
+
+#include <linux/sockios.h> // provides SIOCETHTOOL
+#include <sys/ioctl.h> // no SIOCETHTOOL in <bits/ioctls.h>
+
 #include <unistd.h>
 
 #include <arpa/inet.h> // inet_ntop
@@ -13,10 +16,15 @@
 #include <net/if_arp.h> // ARPHRD_* device type
 #include <net/route.h> // struct rtentry
 
-// #include <net/if.h> // netdevice(7) but no IFF_LOWER_UP
-#include <linux/if.h> // provides IFF_LOWER_UP
+// <net/if.h> <linux/if.h>
+//     X            O      IFF_LOWER_UP
+//     O            X      struct if_nameindex
+#define IFF_LOWER_UP (1<<16)
+#include <net/if.h>
 
-#include <bsd/stdlib.h>
+#include <bsd/stdlib.h> // humanize_number(3bsd)
+
+#include <linux/ethtool.h>
 
 #include "def.h"
 
@@ -158,16 +166,30 @@ void addr(const char *t,struct sockaddr *addr){
 
 }
 
-void netdevice(const int i){
+void humanize(long n){
+  int scale=0;
+  char buf[SZ]={};
+  for(;;){
+    bzero(buf,SZ);
+    assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
+    if(0==strncmp(buf,"0.0",3))
+      break;
+    ++scale;
+  }
+  scale>0?(scale-=1):0;
+  bzero(buf,SZ);
+  assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
+  printf("%s ",buf);
+  fflush(stdout);
+}
 
-  struct ifreq ifr0={.ifr_ifindex=i};
-  assert(0==ioctl(sockfd,SIOCGIFNAME,&ifr0));
-  printf("%d ",ifr0.ifr_ifindex);
-  printf(NAME_FMT,ifr0.ifr_name);
+void netdevice(const char *const name){
 
   struct ifreq ifr={};
   int r=0;
-  #define REFILL() {ifr=(struct ifreq){};strcpy(ifr.ifr_name,ifr0.ifr_name);r=0;errno=0;}
+  #define REFILL() {ifr=(struct ifreq){};strncpy(ifr.ifr_name,name,IFNAMSIZ);r=0;errno=0;}
+
+  // SIOCGIFNAME and SIOCGIFINDEX in onebyone()
 
   REFILL();
   assert(0==ioctl(sockfd,SIOCGIFFLAGS,&ifr));
@@ -210,7 +232,6 @@ void netdevice(const int i){
   const unsigned char *const h=(unsigned char*)ifr.ifr_hwaddr.sa_data;
   printf("hwaddr %02x:%02x:%02x:%02x:%02x:%02x ",h[0],h[1],h[2],h[3],h[4],h[5]);
 
-
   REFILL();
   assert(0==ioctl(sockfd,SIOCGIFMAP,&ifr));
   // printf("%zu",sizeof(struct ifmap)); // 24
@@ -224,12 +245,57 @@ void netdevice(const int i){
   assert(0==ioctl(sockfd,SIOCGIFTXQLEN,&ifr));
   printf("txq %d ",ifr.ifr_qlen);
 
+  // REFILL();
+  // // struct ethtool_cmd ec={.cmd=ETHTOOL_GSET};
+  // struct ethtool_cmd ec={.cmd=};
+  // ifr.ifr_data=&ec;
+  // r=ioctl(sockfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
+  // if(r!=0){
+  //   assert( r==-1 && errno==EOPNOTSUPP);
+  // }else{
+  //   printf("speed %u %u ",ec.speed,ethtool_cmd_speed(&ec));
+  // }
+
+  // REFILL();
+  // struct ethtool_link_settings els={.cmd=ETHTOOL_GLINKSETTINGS};
+  // ifr.ifr_data=&els;
+  // r=ioctl(sockfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
+  // if(r!=0){
+  //   assert( r==-1 && errno==EOPNOTSUPP);
+  // }else{
+  //   printf("[%u 0x%X 0x%X] ",els.speed,els.duplex,els.port);
+  // }
+
   #undef REFILL
   printf("\n");
 
 }
 
-void conf(){
+void onebyone(){
+  struct if_nameindex *ifn=if_nameindex();
+  assert(ifn);
+  for(int i=0;;++i){
+    if(ifn[i].if_index==0){
+      assert(!ifn[i].if_name);
+      break;
+    }
+    // SIOCGIFNAME index to name
+    struct ifreq ifrI2N=(struct ifreq){.ifr_ifindex=ifn[i].if_index};
+    assert(0==ioctl(sockfd,SIOCGIFNAME,&ifrI2N));
+    assert(0==strcmp(ifrI2N.ifr_name,ifn[i].if_name));
+    // SIOCGIFINDEX name to index
+    struct ifreq ifrN2I={};
+    strncpy(ifrN2I.ifr_name,ifn[i].if_name,IFNAMSIZ);
+    assert(0==ioctl(sockfd,SIOCGIFINDEX,&ifrN2I));
+    assert((unsigned)ifrN2I.ifr_ifindex==ifn[i].if_index);
+    printf("#%d %s | ",ifn[i].if_index,ifn[i].if_name);
+    netdevice(ifn[i].if_name);
+  }
+  if_freenameindex(ifn);
+  ifn=NULL;
+}
+
+void all_ifconf(){
   struct ifconf ifc={
     .ifc_len=0,
     .ifc_req=NULL
@@ -255,24 +321,7 @@ void conf(){
   }
 }
 
-void humanize(long n){
-  int scale=0;
-  char buf[SZ]={};
-  for(;;){
-    bzero(buf,SZ);
-    assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
-    if(0==strncmp(buf,"0.0",3))
-      break;
-    ++scale;
-  }
-  scale>0?(scale-=1):0;
-  bzero(buf,SZ);
-  assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
-  printf("%s ",buf);
-  fflush(stdout);
-}
-
-void conf2(){
+void all_getifaddrs(){
   struct ifaddrs *ifa=NULL;
   assert(0==getifaddrs(&ifa));
   assert(ifa);
@@ -325,16 +374,13 @@ int main(){
   // getchar();
   // reset();
 
-  // printf("\n");
-  // netdevice(1);
-  // netdevice(2);
-  // netdevice(3);
-  // netdevice(5);
-  // printf("\n");
-  // conf();
-  // printf("\n");
-  conf2();
-  // printf("\n");
+  printf("\n");
+  onebyone();
+  printf("\n");
+  all_ifconf();
+  printf("\n");
+  all_getifaddrs();
+  printf("\n");
 
   end();
 
