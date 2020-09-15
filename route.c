@@ -57,16 +57,16 @@ void receive(){
   for(char *p=recvbuf;;){
     const int seglen=recv(fd,p,sizeof(recvbuf)-len,0);
     assert(seglen>=1);
-    len += seglen;
+    len+=seglen;
     // printf("0x%X\n",((struct nlmsghdr*)p)->nlmsg_type);
     if(((struct nlmsghdr*)p)->nlmsg_type==NLMSG_DONE||((struct nlmsghdr*)p)->nlmsg_type==NLMSG_ERROR)
       break;
-    p += seglen;
+    p+=seglen;
   }
 }
 
 void poll(){
-  struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
+  const struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
   for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
     switch(nh->nlmsg_type){
       case NLMSG_NOOP:printf("NLMSG_NOOP ");break;
@@ -85,30 +85,39 @@ void ack(){
   assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
 }
 
-void attr(struct nlmsghdr *np,struct rtattr *rp,int type,const void *data){
-  rp->rta_type=type;
-  int l=0;
+void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void *const data){
+
+  #define NEWLEN(x) (NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(RTA_LENGTH(x)))
+  #define FILL(x) {assert(NEWLEN(x)<=maxlen);rta->rta_type=type;rta->rta_len=RTA_LENGTH(x);}
+
+  size_t l=0;
+  struct rtattr *const rta=(struct rtattr*)(((char*)n)+NLMSG_ALIGN(n->nlmsg_len));
+
   if(type==RTA_DST||type==RTA_GATEWAY){
     l=sizeof(struct in_addr);
-    rp->rta_len=RTA_LENGTH(l);
-    bzero(RTA_DATA(rp),l);
-    assert(1==inet_pton(AF_INET,data,RTA_DATA(rp)));
-  }
-  else if(type==RTA_OIF){
+    FILL(l);
+    bzero(RTA_DATA(rta),l);
+    assert(1==inet_pton(AF_INET,data,RTA_DATA(rta)));
+  }else if(type==RTA_OIF){
     l=sizeof(int);
-    rp->rta_len=RTA_LENGTH(l);
-    *((int*)RTA_DATA(rp))=*((int*)data);
+    FILL(l);
+    *((int*)RTA_DATA(rta))=*((int*)data);
   }else{
     assert(false);
   }
-  np->nlmsg_len=NLMSG_ALIGN(np->nlmsg_len)+RTA_LENGTH(l);
+
+  n->nlmsg_len=NEWLEN(l);
+
+  #undef NEWLEN
+  #undef FILL
+
 }
 
 #define add_route(dst,via) route(true,false,dst,via)
 #define del_route(dst,via) route(false,false,dst,via)
 #define add_gateway(via) route(true,true,NULL,via)
 #define del_gateway(via) route(false,true,NULL,via)
-void route(bool add,bool gw,const char *dst,const char *via){
+void route(const bool add,const bool gw,const char *const dst,const char *const via){
 
   assert(0==getuid());
   if(gw)
@@ -137,16 +146,12 @@ void route(bool add,bool gw,const char *dst,const char *via){
   };
   assert(NLMSG_DATA(&req.nh)==&req.rt);
 
-  struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
-  assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
-  int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
-  if(!gw){
-    attr(&req.nh,rta,RTA_DST,dst);
-    rta=RTA_NEXT(rta,len);
-  }
-  attr(&req.nh,rta,RTA_GATEWAY,via);
-  rta=RTA_NEXT(rta,len);
-  attr(&req.nh,rta,RTA_OIF,&((int){3}));
+  // struct rtattr *rta=RTM_RTA(NLMSG_DATA(&req.nh));
+  // assert(rta==(struct rtattr *)((char*)&req.nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
+  // int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
+  (!gw)?attr(&req.nh,sizeof(Req),RTA_DST,dst):0;
+  attr(&req.nh,sizeof(Req),RTA_GATEWAY,via);
+  attr(&req.nh,sizeof(Req),RTA_OIF,&((int){3}));
 
   assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
   receive();
@@ -178,7 +183,7 @@ void ask_route(){
       .rtm_dst_len=0,
       .rtm_src_len=0,
       .rtm_tos=0,
-      .rtm_table=RT_TABLE_MAIN,
+      .rtm_table=0/*RT_TABLE_MAIN*/,
       .rtm_protocol=RTPROT_UNSPEC,
       .rtm_scope=RT_SCOPE_UNIVERSE,
       .rtm_type=RTN_UNSPEC,
@@ -187,7 +192,7 @@ void ask_route(){
   },sizeof(Req_getroute),0));
 }
 
-void steal_flag(unsigned *flags,const unsigned f,const char *const s){
+void steal_flag(unsigned *const flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
@@ -211,7 +216,7 @@ void print_route(){
       nh->nlmsg_pid==(unsigned)getpid()
     );
 
-    const struct rtmsg *rtm=(struct rtmsg*)NLMSG_DATA(nh);
+    const struct rtmsg *const rtm=(struct rtmsg*)NLMSG_DATA(nh);
     if(rtm->rtm_table!=RT_TABLE_MAIN){
       assert(rtm->rtm_table==RT_TABLE_LOCAL);
       printf("[local] (skipped)\n");
@@ -225,18 +230,12 @@ void print_route(){
     assert(rtm->rtm_src_len==0);
     assert(rtm->rtm_tos==0);
     // printf("%u ",rtm->rtm_protocol);
-    if(rtm->rtm_protocol==RTPROT_DHCP)
-      printf("dhcp ");
-    else if(rtm->rtm_protocol==RTPROT_BOOT)
-      printf("boot ");
-    else
-      assert(false);
-    if(rtm->rtm_scope==RT_SCOPE_LINK)
-      printf("link ");
-    else if(rtm->rtm_scope==RT_SCOPE_UNIVERSE)
-      printf("universe ");
-    else
-      assert(false);
+    if(rtm->rtm_protocol==RTPROT_DHCP) printf("dhcp ");
+    else if(rtm->rtm_protocol==RTPROT_BOOT) printf("boot ");
+    else assert(false);
+    if(rtm->rtm_scope==RT_SCOPE_LINK) printf("link ");
+    else if(rtm->rtm_scope==RT_SCOPE_UNIVERSE) printf("universe ");
+    else assert(false);
     assert(rtm->rtm_type==RTN_UNICAST);
     assert(rtm->rtm_flags==0);
 
@@ -244,9 +243,7 @@ void print_route(){
 
     struct rtattr *p=(struct rtattr*)RTM_RTA(rtm);
     assert(p==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct rtmsg))));
-
     int rtl=RTM_PAYLOAD(nh);
-
     for(;RTA_OK(p,rtl);p=RTA_NEXT(p,rtl)){
       char s[INET_ADDRSTRLEN]={};
       switch(p->rta_type){
@@ -316,7 +313,7 @@ void get_gateway(char *const s){
       nh->nlmsg_pid==(unsigned)getpid()
     );
 
-    const struct rtmsg *rtm=(struct rtmsg*)NLMSG_DATA(nh);
+    const struct rtmsg *const rtm=(struct rtmsg*)NLMSG_DATA(nh);
     if(
       rtm->rtm_dst_len!=0 ||
       rtm->rtm_table!=RT_TABLE_MAIN ||
@@ -382,7 +379,7 @@ typedef struct {
   unsigned v;
 } V32;
 
-void catch(V32 *m,unsigned v){
+void catch(V32 *const m,const unsigned v){
   assert(!(m->caught));
   m->caught=true;
   m->v=v;
@@ -395,14 +392,16 @@ void bytes(const void *const p,const int n){
   printf("] ");
 }
 
-void mac_colon(const void *const p,char *s){
+void mac_colon(const void *const p,char *const s){
   const unsigned char *const h=p;
   sprintf(s,"%02x:%02x:%02x:%02x:%02x:%02x",h[0],h[1],h[2],h[3],h[4],h[5]);
-  /*int l=0;
-  l+=sprintf(s,"%02x",*((unsigned char*)p));
-  for(int i=1;i<6;++i)
-    l+=sprintf(s+l,":%02x",*((unsigned char*)p+i));
-  assert(l==MAC_L);*/
+  // int l=0;
+  // for(int i=0;i<6;++i)
+  //   l+=sprintf(s+l,"%02X%s",h[i],i<5?":":"");
+  // // l+=sprintf(s,"%02x",*((unsigned char*)p));
+  // // for(int i=1;i<6;++i)
+  // //   l+=sprintf(s+l,":%02x",*((unsigned char*)p+i));
+  // assert(l==MAC_L);
 }
 
 void print_link(){
@@ -450,7 +449,7 @@ void print_link(){
     );
 
     // Part 2 ifinfomsg
-    struct ifinfomsg *ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
+    struct ifinfomsg *const ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
     assert(
       ifm->ifi_family==AF_UNSPEC &&
       ifm->ifi_change==0
@@ -479,7 +478,7 @@ void print_link(){
     printf("\n");
 
     // Part 3 rtattr
-    struct rtattr *rta=IFLA_RTA(ifm); // /usr/include/linux/if_link.h
+    const struct rtattr *rta=IFLA_RTA(ifm); // /usr/include/linux/if_link.h
     assert(rta==(struct rtattr*)((char*)nh+NLMSG_LENGTH(sizeof(struct ifinfomsg))));
     int rtl=RTM_PAYLOAD(nh);
 
@@ -632,25 +631,25 @@ void init(){
 
 void set(){
 
-  tun_create("tun0");
+  // tun_create("tun0");
   // tun_up();
   // tun_flush();
   // tun_addr("10.0.0.1");
 
-  // del_gateway(gw);
+  del_gateway(gw);
   // add_gateway("10.0.0.2");
 
   // printf("%s\n",server);
-  // add_route(server,gw);
+  add_route(server,gw);
 
 }
 
 void reset(){
 
-  // del_route(server,gw);
+  del_route(server,gw);
 
   // del_gateway("10.0.0.2");
-  // add_gateway(gw);
+  add_gateway(gw);
 
   // tun_flush();
   // tun_down();
@@ -661,17 +660,17 @@ void reset(){
 int main(){
 
   init();
-  // print_link();
-  // print_route();
+  print_link();
+  print_route();
 
   set();
-  // print_link();
-  // print_route();
+  print_link();
+  print_route();
 
-  // external();
-  // reset();
-  // print_link();
-  // print_route();
+  external();
+  reset();
+  print_link();
+  print_route();
 
   end();
 
