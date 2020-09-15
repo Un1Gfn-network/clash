@@ -1,0 +1,97 @@
+execve("/usr/bin/ip", ["ip", "tuntap", "add", "dev", "tun0", "mode", "tun"], 0x7ffc8a19cd00 /* 18 vars */) = 0
+brk(NULL)                               = 0x55a04da94000
+arch_prctl(0x3001 /* ARCH_??? */, 0x7fffdac8f200) = -1 EINVAL (Invalid argument)
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=164927, ...}) = 0
+mmap(NULL, 164927, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7fb0f2765000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libelf.so.1", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0 0\0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=100168, ...}) = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fb0f2763000
+mmap(NULL, 102424, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f2749000
+mprotect(0x7fb0f274c000, 86016, PROT_NONE) = 0
+mmap(0x7fb0f274c000, 65536, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7fb0f274c000
+mmap(0x7fb0f275c000, 16384, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x13000) = 0x7fb0f275c000
+mmap(0x7fb0f2761000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x17000) = 0x7fb0f2761000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libmnl.so.0", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0  \0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=26368, ...}) = 0
+mmap(NULL, 28688, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f2741000
+mprotect(0x7fb0f2743000, 16384, PROT_NONE) = 0
+mmap(0x7fb0f2743000, 8192, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x2000) = 0x7fb0f2743000
+mmap(0x7fb0f2745000, 4096, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x4000) = 0x7fb0f2745000
+mmap(0x7fb0f2747000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x5000) = 0x7fb0f2747000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libcap.so.2", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0  \0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0644, st_size=34528, ...}) = 0
+mmap(NULL, 36920, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f2737000
+mmap(0x7fb0f2739000, 16384, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x2000) = 0x7fb0f2739000
+mmap(0x7fb0f273d000, 8192, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x6000) = 0x7fb0f273d000
+mmap(0x7fb0f273f000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x7000) = 0x7fb0f273f000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libdl.so.2", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\20\22\0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=18608, ...}) = 0
+mmap(NULL, 20624, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f2731000
+mmap(0x7fb0f2732000, 8192, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1000) = 0x7fb0f2732000
+mmap(0x7fb0f2734000, 4096, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7fb0f2734000
+mmap(0x7fb0f2735000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7fb0f2735000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\220\202\2\0\0\0\0\0"..., 832) = 832
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+pread64(3, "\4\0\0\0\20\0\0\0\5\0\0\0GNU\0\2\0\0\300\4\0\0\0\3\0\0\0\0\0\0\0", 32, 848) = 32
+pread64(3, "\4\0\0\0\24\0\0\0\3\0\0\0GNU\0\364[g\253(\257\25\201\313\250\344q>\17\323\262"..., 68, 880) = 68
+fstat(3, {st_mode=S_IFREG|0755, st_size=2159552, ...}) = 0
+pread64(3, "\6\0\0\0\4\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0@\0\0\0\0\0\0\0"..., 784, 64) = 784
+mmap(NULL, 1868448, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f2568000
+mmap(0x7fb0f258e000, 1363968, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x26000) = 0x7fb0f258e000
+mmap(0x7fb0f26db000, 311296, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x173000) = 0x7fb0f26db000
+mmap(0x7fb0f2727000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1be000) = 0x7fb0f2727000
+mmap(0x7fb0f272d000, 12960, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7fb0f272d000
+close(3)                                = 0
+openat(AT_FDCWD, "/usr/lib/libz.so.1", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0 0\0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=100096, ...}) = 0
+mmap(NULL, 102416, PROT_READ, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7fb0f254e000
+mprotect(0x7fb0f2551000, 86016, PROT_NONE) = 0
+mmap(0x7fb0f2551000, 57344, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x3000) = 0x7fb0f2551000
+mmap(0x7fb0f255f000, 24576, PROT_READ, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x11000) = 0x7fb0f255f000
+mmap(0x7fb0f2566000, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x17000) = 0x7fb0f2566000
+close(3)                                = 0
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fb0f254c000
+mmap(NULL, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fb0f2549000
+arch_prctl(ARCH_SET_FS, 0x7fb0f2549740) = 0
+mprotect(0x7fb0f2727000, 12288, PROT_READ) = 0
+mprotect(0x7fb0f2566000, 4096, PROT_READ) = 0
+mprotect(0x7fb0f2735000, 4096, PROT_READ) = 0
+mprotect(0x7fb0f273f000, 4096, PROT_READ) = 0
+mprotect(0x7fb0f2747000, 4096, PROT_READ) = 0
+mprotect(0x7fb0f2761000, 4096, PROT_READ) = 0
+mprotect(0x55a04cc91000, 8192, PROT_READ) = 0
+mprotect(0x7fb0f27ba000, 4096, PROT_READ) = 0
+munmap(0x7fb0f2765000, 164927)          = 0
+prctl(PR_CAPBSET_READ, CAP_MAC_OVERRIDE) = 1
+prctl(PR_CAPBSET_READ, 0x30 /* CAP_??? */) = -1 EINVAL (Invalid argument)
+prctl(PR_CAPBSET_READ, 0x28 /* CAP_??? */) = -1 EINVAL (Invalid argument)
+prctl(PR_CAPBSET_READ, CAP_BLOCK_SUSPEND) = 1
+prctl(PR_CAPBSET_READ, CAP_PERFMON)     = 1
+prctl(PR_CAPBSET_READ, CAP_BPF)         = 1
+getuid()                                = 0
+socket(AF_NETLINK, SOCK_RAW|SOCK_CLOEXEC, NETLINK_ROUTE) = 3
+setsockopt(3, SOL_SOCKET, SO_SNDBUF, [32768], 4) = 0
+setsockopt(3, SOL_SOCKET, SO_RCVBUF, [1048576], 4) = 0
+setsockopt(3, SOL_NETLINK, NETLINK_EXT_ACK, [1], 4) = 0
+bind(3, {sa_family=AF_NETLINK, nl_pid=0, nl_groups=00000000}, 12) = 0
+getsockname(3, {sa_family=AF_NETLINK, nl_pid=321054, nl_groups=00000000}, [12]) = 0
+setsockopt(3, SOL_NETLINK, NETLINK_DUMP_STRICT_CHK, [1], 4) = 0
+openat(AT_FDCWD, "/dev/net/tun", O_RDWR) = 4
+ioctl(4, TUNSETIFF, 0x7fffdac8f110)     = 0
+ioctl(4, TUNSETPERSIST, 0x1)            = 0
+close(4)                                = 0
+exit_group(0)                           = ?
++++ exited with 0 +++

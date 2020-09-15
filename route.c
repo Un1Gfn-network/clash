@@ -537,8 +537,13 @@ void print_link(){
         // 4-byte
         case IFLA_GROUP:
         case IFLA_PROMISCUITY:assert(0==*(unsigned*)RTA_DATA(rta));break;
+
         case IFLA_NUM_TX_QUEUES:
         case IFLA_NUM_RX_QUEUES:assert(1==*(unsigned*)RTA_DATA(rta));break;
+        // IFF_MULTI_QUEUE
+        // case IFLA_NUM_TX_QUEUES:
+        // case IFLA_NUM_RX_QUEUES:printf("[%u] ",*(unsigned*)RTA_DATA(rta));break;
+
         case IFLA_GSO_MAX_SEGS:assert(65535==*(unsigned*)RTA_DATA(rta));break;
         case IFLA_GSO_MAX_SIZE:assert(65536==*(unsigned*)RTA_DATA(rta));break;
 
@@ -661,16 +666,16 @@ int main(){
 
   init();
   print_link();
-  print_route();
+  // print_route();
 
-  set();
-  print_link();
-  print_route();
+  // set();
+  // print_link();
+  // print_route();
 
-  external();
-  reset();
-  print_link();
-  print_route();
+  // external();
+  // reset();
+  // print_link();
+  // print_route();
 
   end();
 

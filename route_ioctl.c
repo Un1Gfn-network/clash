@@ -1,10 +1,11 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h> // open()
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h> // close() getuid()
 
 #include <arpa/inet.h> // inet_ntop
 #include <bsd/stdlib.h> // humanize_number(3bsd)
@@ -22,6 +23,8 @@
 //     O            X      struct if_nameindex
 #define IFF_LOWER_UP (1<<16)
 #include <net/if.h>
+
+#include <linux/if_tun.h>
 
 // struct ethtool_cmd(deprecated) and ethtool_link_settings
 // #include <linux/ethtool.h>
@@ -47,6 +50,7 @@ typedef enum {
 } OP;
 
 int sockfd=-1;
+int tunfd=-1;
 char *server=NULL;
 const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
 
@@ -54,8 +58,9 @@ const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
 #define del_route(IP,VIA) route(false,false,IP,VIA)
 #define add_gateway(VIA) route(true,true,NULL,VIA)
 #define del_gateway(VIA) route(false,true,NULL,VIA)
-void route(bool add,bool net,const char *dst,const char *gw){
+void route(const bool add,const bool net,const char *const dst,const char *const gw){
 
+  assert(0==getuid());
   assert( ( (bool)dst ^ (bool)net ) == 1 );
   assert(gw);
   struct rtentry e={};
@@ -95,23 +100,46 @@ void route(bool add,bool net,const char *dst,const char *gw){
 
 }
 
-void set(){
+void tun_create(char *dev){
   assert(0==getuid());
-  del_gateway(gateway);
-  add_route(server,gateway);
+  assert(dev);
+  /* Flags: IFF_TUN   - TUN device (no Ethernet headers)
+   *        IFF_TAP   - TAP device
+   *
+   *        IFF_NO_PI - Do not provide packet information
+   *        IFF_MULTI_QUEUE - Create a queue of multiqueue device
+   */
+  struct ifreq ifc={.ifr_flags = IFF_TUN | IFF_NO_PI };
+  strncpy(ifc.ifr_name,dev,IFNAMSIZ);
+  assert(0==ioctl(tunfd,TUNSETIFF,&ifc));
+  assert(0==ioctl(tunfd,TUNSETPERSIST,1));
+
+  // struct ifreq ifr={.ifr_qlen=1};
+  // strncpy(ifr.ifr_name,dev,IFNAMSIZ);
+  // assert(0==ioctl(sockfd,SIOCSIFTXQLEN,&ifr));
+
+}
+
+void set(){
+
+  tun_create("tunT");
+
+  // del_gateway(gateway);
   // add_gateway("10.0.0.2");
+  // add_route(server,gateway);
 }
 
 void reset(){
-  assert(0==getuid());
-  del_route(server,gateway);
-  add_gateway(gateway);
+  // del_route(server,gateway);
   // del_gateway("10.0.0.2");
+  // add_gateway(gateway);
 }
 
 void init(){
   sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
   assert(sockfd==3);
+  tunfd=open("/dev/net/tun",O_RDWR);
+  assert(tunfd==4);
   server=json_load_server();
   assert(server);
   // printf("%s\n",server);
@@ -120,8 +148,10 @@ void init(){
 void end(){
   free(server);
   server=NULL;
+  close(tunfd);
+  tunfd=-1;
   close(sockfd);
-  sockfd=0;
+  sockfd=-1;
 }
 
 void steal_flag_u16(short *flags,const short f,const char *const s){
@@ -407,11 +437,12 @@ void all_getifaddrs(){
 int main(){
 
   init();
-  printf("\n");
 
-  // set();
+  set();
   // getchar();
   // reset();
+
+  printf("\n");
 
   onebyone();
   printf("\n");
