@@ -121,9 +121,7 @@ void tun_create(char *dev){
 }
 
 void set(){
-
-  tun_create("tunT");
-
+  tun_create(TUN);
   // del_gateway(gateway);
   // add_gateway("10.0.0.2");
   // add_route(server,gateway);
@@ -442,16 +440,13 @@ int main(){
   // getchar();
   // reset();
 
-  printf("\n");
-
-  onebyone();
-  printf("\n");
-
-  all_ifconf();
-  printf("\n");
-
-  all_getifaddrs();
-  printf("\n");
+  // printf("\n");
+  // onebyone();
+  // printf("\n");
+  // all_ifconf();
+  // printf("\n");
+  // all_getifaddrs();
+  // printf("\n");
 
   end();
 

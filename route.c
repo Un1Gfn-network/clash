@@ -14,6 +14,8 @@
 
 #include <linux/if.h>
 
+#include "def.h" // TUN
+
 // 11:22:33:44:55:66
 #define MAC_L (2*6+5)
 
@@ -32,13 +34,6 @@ int len=0;
 
 char *server=NULL;
 char gw[INET_ADDRSTRLEN]={};
-
-// For RTM_NEWROUTE and RTM_DELROUTE
-typedef struct {
-  struct nlmsghdr nh;
-  struct rtmsg rt;
-  char attrbuf[SZ]; // rtnetlink(3)
-} Req;
 
 void end(){
   bzero(gw,INET_ADDRSTRLEN);
@@ -65,7 +60,7 @@ void receive(){
   }
 }
 
-void poll(){
+/*void poll(){
   const struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
   for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
     switch(nh->nlmsg_type){
@@ -78,7 +73,7 @@ void poll(){
     }
     printf("\n");
   }
-}
+}*/
 
 void ack(){
   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
@@ -93,15 +88,20 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
   size_t l=0;
   struct rtattr *const rta=(struct rtattr*)(((char*)n)+NLMSG_ALIGN(n->nlmsg_len));
 
-  if(type==RTA_DST||type==RTA_GATEWAY){
-    l=sizeof(struct in_addr);
+  if(type==IFLA_IFNAME){
+    const char *const s=data;
+    l=strlen(s)+1;
     FILL(l);
-    bzero(RTA_DATA(rta),l);
-    assert(1==inet_pton(AF_INET,data,RTA_DATA(rta)));
+    strcpy(RTA_DATA(rta),s);
   }else if(type==RTA_OIF){
     l=sizeof(int);
     FILL(l);
     *((int*)RTA_DATA(rta))=*((int*)data);
+  }else if(type==RTA_DST||type==RTA_GATEWAY){
+    l=sizeof(struct in_addr);
+    FILL(l);
+    bzero(RTA_DATA(rta),l);
+    assert(1==inet_pton(AF_INET,data,RTA_DATA(rta)));
   }else{
     assert(false);
   }
@@ -118,6 +118,13 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
 #define add_gateway(via) route(true,true,NULL,via)
 #define del_gateway(via) route(false,true,NULL,via)
 void route(const bool add,const bool gw,const char *const dst,const char *const via){
+
+  // RTM_DELROUTE/RTM_ADDROUTE only
+  typedef struct {
+    struct nlmsghdr nh;
+    struct rtmsg rt;
+    char attrbuf[SZ]; // rtnetlink(3)
+  } Req;
 
   assert(0==getuid());
   if(gw)
@@ -162,15 +169,15 @@ void route(const bool add,const bool gw,const char *const dst,const char *const 
 
 void ask_route(){
 
-  // For RTM_GETROUTE only
+  // RTM_GETROUTE only
   typedef struct {
     struct nlmsghdr nh;
     struct rtmsg rt;
-  } Req_getroute;
+  } Req;
 
   // rtnetlink(3)
-  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req_getroute));
-  assert(sizeof(Req_getroute)==send(fd,&(Req_getroute){
+  assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req));
+  assert(sizeof(Req)==send(fd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
       .nlmsg_type=RTM_GETROUTE,
@@ -189,7 +196,7 @@ void ask_route(){
       .rtm_type=RTN_UNSPEC,
       .rtm_flags=0
     }
-  },sizeof(Req_getroute),0));
+  },sizeof(Req),0));
 }
 
 void steal_flag(unsigned *const flags,const unsigned f,const char *const s){
@@ -370,9 +377,9 @@ void get_gateway(char *const s){
 
 }
 
-void pos(const void *const p){
+/*void pos(const void *const p){
   printf("%ld ",(char*)p-recvbuf);
-}
+}*/
 
 typedef struct {
   bool caught;
@@ -385,12 +392,12 @@ void catch(V32 *const m,const unsigned v){
   m->v=v;
 }
 
-void bytes(const void *const p,const int n){
+/*void bytes(const void *const p,const int n){
   printf("[ ");
   for(int i=0;i<n;++i)
     printf("0x%02X ",*((unsigned char*)p+i));
   printf("] ");
-}
+}*/
 
 void mac_colon(const void *const p,char *const s){
   const unsigned char *const h=p;
@@ -406,12 +413,14 @@ void mac_colon(const void *const p,char *const s){
 
 void print_link(){
 
+  // REM_GETLINK only
   typedef struct {
     struct nlmsghdr nh;
     struct ifinfomsg ifi;
-  } Req_getlink;
-  assert(NLMSG_LENGTH(sizeof(struct ifinfomsg))==sizeof(Req_getlink));
-  assert(sizeof(Req_getlink)==send(fd,&(Req_getlink){
+  } Req;
+
+  assert(NLMSG_LENGTH(sizeof(struct ifinfomsg))==sizeof(Req));
+  assert(sizeof(Req)==send(fd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_GETLINK,
@@ -427,7 +436,7 @@ void print_link(){
       .ifi_flags=0,
       .ifi_change=0xFFFFFFFF,
     }
-  },sizeof(Req_getlink),0));
+  },sizeof(Req),0));
 
   receive();
 
@@ -636,36 +645,75 @@ void init(){
 
 void set(){
 
-  // tun_create("tun0");
   // tun_up();
   // tun_flush();
   // tun_addr("10.0.0.1");
 
-  del_gateway(gw);
+  // del_gateway(gw);
   // add_gateway("10.0.0.2");
 
   // printf("%s\n",server);
-  add_route(server,gw);
+  // add_route(server,gw);
+
+}
+
+void tun_del(const char *const dev){
+
+  assert(0==getuid());
+  assert(dev);
+
+  // REM_DELLINK only
+  typedef struct {
+    struct nlmsghdr nh;
+    struct ifinfomsg ifi;
+    char attrbuf[SZ];
+  } Req;
+
+  Req req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_DELLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
+      .nlmsg_seq=0,
+      .nlmsg_pid=0
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      // .ifi_family=AF_INET,
+      .ifi_type=0,
+      .ifi_index=0,
+      .ifi_flags=0,
+      .ifi_change=0xFFFFFFFF,
+    },
+    .attrbuf={}
+  };
+
+  attr(&req.nh,sizeof(Req),IFLA_IFNAME,dev);
+
+  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+  receive();
+  ack();
+  clearbuf();
 
 }
 
 void reset(){
 
-  del_route(server,gw);
+  // del_route(server,gw);
 
   // del_gateway("10.0.0.2");
-  add_gateway(gw);
+  // add_gateway(gw);
 
   // tun_flush();
   // tun_down();
-  // tun_del("tun0");
+  tun_del(TUN);
 
 }
 
 int main(){
 
   init();
-  print_link();
+  // print_link();
   // print_route();
 
   // set();
@@ -673,7 +721,7 @@ int main(){
   // print_route();
 
   // external();
-  // reset();
+  reset();
   // print_link();
   // print_route();
 
