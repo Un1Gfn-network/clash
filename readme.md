@@ -1,3 +1,19 @@
+print_link()
+
+```
+#6 noheader p2p noarp multicast
+tun0 txq 500 down default physical down noop (map_32) (stats64_192) (stats_96) (xdp_8) (linkinfo_52) (afspec_760)
+mtu 68 < 1500 < 65535
+carrier change up 0 down 1 total 1
+```
+ip -d l
+
+```
+6: tun0: <POINTOPOINT,MULTICAST,NOARP> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 500
+    link/none  promiscuity 0 minmtu 68 maxmtu 65535
+    tun type tun pi off vnet_hdr off persist on addrgenmode eui64 numtxqueues 1 numrxqueues 1 gso_max_size 65536 gso_max_segs 65535
+```
+
 tun2socks
 * [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
 * <del>[Add UDP forwarding w/ badvpn-udpgw](https://github.com/ambrop72/badvpn/wiki/Tun2socks#udp-forwarding)</del>

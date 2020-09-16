@@ -77,7 +77,12 @@ void receive(){
 
 void ack(){
   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
-  assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
+  // assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
+  const int e=((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error;
+  if(e!=0){
+    eprintf("%d %s\n",e,strerror(e));
+    assert(false);
+  }
 }
 
 void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void *const data){
@@ -440,8 +445,6 @@ void print_link(){
 
   receive();
 
-  // poll();
-
   printf("\n");
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
   for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
@@ -454,6 +457,7 @@ void print_link(){
       // nh->nlmsg_len
       nh->nlmsg_type==RTM_NEWLINK &&
       nh->nlmsg_flags==NLM_F_MULTI &&
+      nh->nlmsg_seq==0 &&
       nh->nlmsg_pid==(unsigned)getpid()
     );
 
@@ -461,6 +465,9 @@ void print_link(){
     struct ifinfomsg *const ifm=(struct ifinfomsg*)NLMSG_DATA(nh);
     assert(
       ifm->ifi_family==AF_UNSPEC &&
+      // ifi_type
+      // ifi_index
+      // ifi_flags
       ifm->ifi_change==0
     );
     printf("#%d ",ifm->ifi_index);
@@ -643,6 +650,79 @@ void init(){
   assert(0==strcmp(gw,"192.168.1.1"));
 }
 
+// RTM_NEWLINK/RTM_DELLINK only
+typedef struct {
+  struct nlmsghdr nh;
+  struct ifinfomsg ifi;
+  char attrbuf[SZ];
+} Req_chlink;
+
+// Fail
+/*void tun_create(const char *const dev){
+
+  assert(0==getuid());
+  assert(dev);
+
+  Req_chlink req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_NEWLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      .ifi_type=ARPHRD_NONE,
+      .ifi_index=0, // ?
+      .ifi_flags=IFF_POINTOPOINT|IFF_NOARP|IFF_MULTICAST,
+      .ifi_change=0xFFFFFFFF,
+    },
+    .attrbuf={}
+  };
+
+  attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
+  // attr(&req.nh,sizeof(Req_chlink),IFLA_LINKMODE,IF_LINK_MODE_DEFAULT);
+
+  assert(sizeof(Req_chlink)==send(fd,&req,sizeof(Req_chlink),0));
+  receive();
+  ack();
+  clearbuf();
+
+}*/
+
+void tun_del(const char *const dev){
+
+  assert(0==getuid());
+  assert(dev);
+
+  Req_chlink req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_DELLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      .ifi_type=0,
+      .ifi_index=0,
+      .ifi_flags=0,
+      .ifi_change=0xFFFFFFFF,
+    },
+    .attrbuf={}
+  };
+
+  attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
+
+  assert(sizeof(Req_chlink)==send(fd,&req,sizeof(Req_chlink),0));
+  receive();
+  ack();
+  clearbuf();
+
+}
+
 void set(){
 
   // tun_up();
@@ -654,46 +734,6 @@ void set(){
 
   // printf("%s\n",server);
   // add_route(server,gw);
-
-}
-
-void tun_del(const char *const dev){
-
-  assert(0==getuid());
-  assert(dev);
-
-  // REM_DELLINK only
-  typedef struct {
-    struct nlmsghdr nh;
-    struct ifinfomsg ifi;
-    char attrbuf[SZ];
-  } Req;
-
-  Req req={
-    .nh={
-      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
-      .nlmsg_type=RTM_DELLINK,
-      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
-      .nlmsg_seq=0,
-      .nlmsg_pid=0
-    },
-    .ifi={
-      .ifi_family=AF_UNSPEC,
-      // .ifi_family=AF_INET,
-      .ifi_type=0,
-      .ifi_index=0,
-      .ifi_flags=0,
-      .ifi_change=0xFFFFFFFF,
-    },
-    .attrbuf={}
-  };
-
-  attr(&req.nh,sizeof(Req),IFLA_IFNAME,dev);
-
-  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
-  receive();
-  ack();
-  clearbuf();
 
 }
 

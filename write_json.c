@@ -209,7 +209,9 @@ void write_json(const char *const filename,const char *const s){
     SCAN();
     if(token.type!=YAML_BLOCK_ENTRY_TOKEN){
       eprintf("%s not found in %s\n",s,filename);
-      exit(1);
+      eprintf("wrong provider?\n");
+      eprintf("proxy-groups? (iteration support not implemented yet)\n");
+      assert(false);
     }
     DEL();
     assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
