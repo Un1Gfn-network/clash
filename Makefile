@@ -1,5 +1,13 @@
 ###
 
+all:
+	$(MAKE) clean
+	$(MAKE) clash_tun.out route.out route_ioctl.out
+
+route:
+	$(MAKE) clean
+	$(MAKE) route.out route_ioctl.out
+
 clean:
 	@rm -fv *.out *.o
 

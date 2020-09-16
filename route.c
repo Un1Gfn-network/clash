@@ -722,7 +722,7 @@ void set(){
 
   // tun_up();
   // tun_flush();
-  // tun_addr("10.0.0.1");
+  // tun_addr(TUN,"10.0.0.1",24);
 
   // get_gateway(gw);
   // del_gateway(gw);

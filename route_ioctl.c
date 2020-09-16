@@ -127,6 +127,7 @@ void addr(const char *t,struct sockaddr *addr){
 
   assert(addr);
   (t&&strlen(t))?printf("%s ",t):0;
+  // printf("[%d] \n",addr->sa_family);
 
   if(addr->sa_family==AF_PACKET){
 
@@ -145,7 +146,6 @@ void addr(const char *t,struct sockaddr *addr){
       printf("%02X%s",s->sll_addr[j],j<(s->sll_halen-1)?":":" ");
 
   }else{
-    // printf("[%d] \n",sin->sin_family);
     struct sockaddr_in *sin=(struct sockaddr_in*)(addr);
     assert(sin->sin_port==0);
 
@@ -403,11 +403,42 @@ void tun_create(char *dev){
   // struct ifreq ifr={.ifr_qlen=1};
   // strncpy(ifr.ifr_name,dev,IFNAMSIZ);
   // assert(0==ioctl(sockfd,SIOCSIFTXQLEN,&ifr));
+}
+
+void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
+
+  struct sockaddr_in *sin=NULL;
+
+  struct ifreq addr={};
+  strncpy(addr.ifr_name,dev,IFNAMSIZ);
+  sin=(struct sockaddr_in*)(&(addr.ifr_addr));
+  sin->sin_family=AF_INET;
+  sin->sin_port=0;
+  assert(1==inet_pton(AF_INET,ipv4,&(sin->sin_addr)));
+  assert(0==ioctl(sockfd,SIOCSIFADDR,&addr));
+
+  struct ifreq mask={};
+  strncpy(mask.ifr_name,dev,IFNAMSIZ);
+  sin=(struct sockaddr_in*)(&(mask.ifr_netmask));
+  sin->sin_family=AF_INET;
+  sin->sin_port=0;
+
+  assert(n<=32);
+  unsigned host=0;
+  for(;n>0;--n)
+    host|=((1<<(32-n))); // ((1<<31)>>(n-1));
+  sin->sin_addr.s_addr=htonl(host);
+
+  // char s[SZ]={};
+  // assert(s==inet_ntop(AF_INET,&(sin->sin_addr),s,INET_ADDRSTRLEN));
+  // printf("%s\n",s);
+  assert(0==ioctl(sockfd,SIOCSIFNETMASK,&mask));
 
 }
 
 void set(){
   tun_create(TUN);
+  tun_addr(TUN,"10.0.0.1",24);
   // del_gateway(gateway);
   // add_gateway("10.0.0.2");
   // server=json_load_server();
