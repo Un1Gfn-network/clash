@@ -53,6 +53,16 @@ int sockfd=-1;
 char *server=NULL;
 const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
 
+void init(){
+  sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+  assert(sockfd==3);
+}
+
+void end(){
+  close(sockfd);
+  sockfd=-1;
+}
+
 #define add_route(IP,VIA) route(true,false,IP,VIA)
 #define del_route(IP,VIA) route(false,false,IP,VIA)
 #define add_gateway(VIA) route(true,true,NULL,VIA)
@@ -97,21 +107,6 @@ void route(const bool add,const bool net,const char *const dst,const char *const
     assert(false);    
   }
 
-}
-
-void init(){
-  sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
-  assert(sockfd==3);
-  server=json_load_server();
-  assert(server);
-  // printf("%s\n",server);
-}
-
-void end(){
-  free(server);
-  server=NULL;
-  close(sockfd);
-  sockfd=-1;
 }
 
 void steal_flag_u16(short *flags,const short f,const char *const s){
@@ -415,11 +410,16 @@ void set(){
   tun_create(TUN);
   // del_gateway(gateway);
   // add_gateway("10.0.0.2");
+  // server=json_load_server();
+  // assert(server);
+  // printf("%s\n",server);
   // add_route(server,gateway);
 }
 
 void reset(){
   // del_route(server,gateway);
+  // free(server);
+  // server=NULL;
   // del_gateway("10.0.0.2");
   // add_gateway(gateway);
 }

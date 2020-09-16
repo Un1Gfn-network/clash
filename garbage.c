@@ -1,12 +1,5 @@
 
-void ack(){
-  assert(NLMSG_OK(nh,len));
-  assert(nh->nlmsg_type==NLMSG_ERROR);
-  const struct nlmsgerr *payload=(struct nlmsgerr*)NLMSG_DATA(nh);
-  assert(payload->error==0);
-  nh=NLMSG_NEXT(nh,len);
-}
-
+// sendmsg()
 assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sendmsg(fd,&(struct msghdr){
   .msg_name = &(struct sockaddr_nl){.nl_family = AF_NETLINK},
   .msg_namelen = sizeof(struct sockaddr_nl),

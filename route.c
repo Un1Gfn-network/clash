@@ -35,10 +35,24 @@ int len=0;
 char *server=NULL;
 char gw[INET_ADDRSTRLEN]={};
 
+typedef struct {
+  bool caught;
+  unsigned v;
+} V32;
+
+void init(){
+  fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
+  assert(fd==3);
+  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
+    .nl_family=AF_NETLINK,
+    .nl_pad=0,
+    .nl_pid=getpid(),
+    .nl_groups=0
+  }),sizeof(struct sockaddr_nl)));
+}
+
 void end(){
   bzero(gw,INET_ADDRSTRLEN);
-  free(server);
-  server=NULL;
   assert(0==close(fd));
   fd=-1;
 }
@@ -356,6 +370,7 @@ void get_gateway(char *const s){
         case RTA_GATEWAY:
           // gw=*(struct in_addr*)RTA_DATA(rta);
           assert(s==inet_ntop(AF_INET,RTA_DATA(rta),s,INET_ADDRSTRLEN));
+          assert(0==strcmp(s,"192.168.1.1"));
           break;
         case RTA_OIF:
           assert(3==*((int*)RTA_DATA(rta)));
@@ -385,11 +400,6 @@ void get_gateway(char *const s){
 /*void pos(const void *const p){
   printf("%ld ",(char*)p-recvbuf);
 }*/
-
-typedef struct {
-  bool caught;
-  unsigned v;
-} V32;
 
 void catch(V32 *const m,const unsigned v){
   assert(!(m->caught));
@@ -635,21 +645,6 @@ void print_link(){
 
 }
 
-void init(){
-  fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
-  assert(fd==3);
-  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
-    .nl_family=AF_NETLINK,
-    .nl_pad=0,
-    .nl_pid=getpid(),
-    .nl_groups=0
-  }),sizeof(struct sockaddr_nl)));
-  server=json_load_server();
-  assert(server);
-  get_gateway(gw);
-  assert(0==strcmp(gw,"192.168.1.1"));
-}
-
 // RTM_NEWLINK/RTM_DELLINK only
 typedef struct {
   struct nlmsghdr nh;
@@ -729,9 +724,12 @@ void set(){
   // tun_flush();
   // tun_addr("10.0.0.1");
 
+  // get_gateway(gw);
   // del_gateway(gw);
   // add_gateway("10.0.0.2");
 
+  // server=json_load_server();
+  // assert(server);
   // printf("%s\n",server);
   // add_route(server,gw);
 
@@ -740,6 +738,8 @@ void set(){
 void reset(){
 
   // del_route(server,gw);
+  // free(server);
+  // server=NULL;
 
   // del_gateway("10.0.0.2");
   // add_gateway(gw);
