@@ -13,7 +13,7 @@ clean:
 
 CC::=gcc
 
-CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -fmax-errors=1
+CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-errors=1
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $<

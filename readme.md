@@ -1,5 +1,12 @@
 [Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
 
+print_addr()
+
+```
+#9 tun0 universe perm | perm
+10.0.0.1/24 local
+```
+
 print_link()
 
 ```

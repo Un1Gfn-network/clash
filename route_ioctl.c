@@ -123,7 +123,7 @@ void steal_flag_u32(unsigned *flags,const unsigned f,const char *const s){
   }
 }
 
-void addr(const char *t,struct sockaddr *addr){
+void showaddr(const char *t,struct sockaddr *addr){
 
   assert(addr);
   (t&&strlen(t))?printf("%s ",t):0;
@@ -213,19 +213,19 @@ void netdevice(const char *const name){
 
   REFILL();
   r=ioctl(sockfd,SIOCGIFADDR,&ifr);
-  r?assert(r==-1&&errno==EADDRNOTAVAIL):addr(NULL,&(ifr.ifr_addr));
+  r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr(NULL,&(ifr.ifr_addr));
 
   REFILL();
   r=ioctl(sockfd,SIOCGIFDSTADDR,&ifr);
-  r?assert(r==-1&&errno==EADDRNOTAVAIL):addr("dst",&(ifr.ifr_dstaddr));
+  r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("dst",&(ifr.ifr_dstaddr));
 
   REFILL();
   r=ioctl(sockfd,SIOCGIFBRDADDR,&ifr);
-  r?assert(r==-1&&errno==EADDRNOTAVAIL):addr("bcast",&(ifr.ifr_dstaddr));
+  r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("bcast",&(ifr.ifr_dstaddr));
 
   REFILL();
   r=ioctl(sockfd,SIOCGIFNETMASK,&ifr);
-  r?assert(r==-1&&errno==EADDRNOTAVAIL):addr("mask",&(ifr.ifr_dstaddr));
+  r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("mask",&(ifr.ifr_dstaddr));
 
   REFILL();
   assert(0==ioctl(sockfd,SIOCGIFMTU,&ifr));
@@ -271,6 +271,10 @@ void netdevice(const char *const name){
 }
 
 void onebyone(){
+
+  #ifdef _LINUX_IF_H
+  #pragma GCC error "include <net/if.h> instead of <linux/if.h>"
+  #endif
   struct if_nameindex *ifn=if_nameindex();
   assert(ifn);
   for(int i=0;;++i){
@@ -315,7 +319,7 @@ void all_ifconf(){
   for(int i=0;i<n;++i){
     // printf("#%d ",ifc.ifc_req[i].ifr_ifindex);
     printf(NAME_FMT,ifc.ifc_req[i].ifr_name);
-    addr(NULL,&(ifc.ifc_req[i].ifr_addr));
+    showaddr(NULL,&(ifc.ifc_req[i].ifr_addr));
     printf("\n");
   }
 }
@@ -371,10 +375,10 @@ void all_getifaddrs(){
     printf("\n");
 
     assert(!(flags&IFF_BROADCAST&IFF_POINTOPOINT)); // Mutually exclusive
-    i->ifa_addr?addr(NULL,i->ifa_addr):0;
-    i->ifa_netmask?addr("mask",i->ifa_netmask):0;
-    i->ifa_broadaddr?addr("bcast",i->ifa_broadaddr):0;
-    i->ifa_dstaddr?addr("dst",i->ifa_dstaddr):0;
+    i->ifa_addr?showaddr(NULL,i->ifa_addr):0;
+    i->ifa_netmask?showaddr("mask",i->ifa_netmask):0;
+    i->ifa_broadaddr?showaddr("bcast",i->ifa_broadaddr):0;
+    i->ifa_dstaddr?showaddr("dst",i->ifa_dstaddr):0;
     (
       i->ifa_addr ||
       i->ifa_netmask ||

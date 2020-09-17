@@ -12,7 +12,8 @@
 #include <linux/rtnetlink.h>
 #include <net/if_arp.h>
 
-#include <linux/if.h>
+#include <linux/if.h> // IFLA_OPER*
+extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 
 #include "def.h" // TUN
 
@@ -107,22 +108,43 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
   size_t l=0;
   struct rtattr *const rta=(struct rtattr*)(((char*)n)+NLMSG_ALIGN(n->nlmsg_len));
 
-  if(type==IFLA_IFNAME){
-    const char *const s=data;
-    l=strlen(s)+1;
-    FILL(l);
-    strcpy(RTA_DATA(rta),s);
-  }else if(type==RTA_OIF){
-    l=sizeof(int);
-    FILL(l);
-    *((int*)RTA_DATA(rta))=*((int*)data);
-  }else if(type==RTA_DST||type==RTA_GATEWAY){
-    l=sizeof(struct in_addr);
-    FILL(l);
-    bzero(RTA_DATA(rta),l);
-    assert(1==inet_pton(AF_INET,data,RTA_DATA(rta)));
-  }else{
-    assert(false);
+  #if(IFLA_IFNAME!=IFA_LABEL)||(RTA_DST!=IFA_ADDRESS)
+    #error
+  #endif
+
+  switch(type){
+    // case IFLA_IFNAME:
+    case IFA_LABEL:{
+      const char *const s=data;
+      l=strlen(s)+1;
+      FILL(l);
+      strcpy(RTA_DATA(rta),s);
+      break;
+    }
+    case IFA_FLAGS:{
+      l=sizeof(unsigned);
+      FILL(l);
+      *((unsigned*)RTA_DATA(rta))=*((unsigned*)data);
+      break;
+    }
+    case RTA_OIF:{
+      l=sizeof(int);
+      FILL(l);
+      *((int*)RTA_DATA(rta))=*((int*)data);
+      break;
+    }
+    // case RTA_DST:
+    case RTA_GATEWAY:
+    case IFA_ADDRESS:
+    case IFA_LOCAL:{
+      l=sizeof(struct in_addr);
+      FILL(l);
+      bzero(RTA_DATA(rta),l);
+      assert(1==inet_pton(AF_INET,data,RTA_DATA(rta)));
+      break;
+    }
+    default:
+      assert(false);
   }
 
   n->nlmsg_len=NEWLEN(l);
@@ -138,16 +160,16 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
 #define del_gateway(via) route(false,true,NULL,via)
 void route(const bool add,const bool gw,const char *const dst,const char *const via){
 
+  assert(0==getuid());
+  if(gw)
+    assert(!dst);
+
   // RTM_DELROUTE/RTM_ADDROUTE only
   typedef struct {
     struct nlmsghdr nh;
     struct rtmsg rt;
-    char attrbuf[SZ]; // rtnetlink(3)
+    char attrbuf[SZ];
   } Req;
-
-  assert(0==getuid());
-  if(gw)
-    assert(!dst);
 
   Req req={
     .nh={
@@ -155,7 +177,7 @@ void route(const bool add,const bool gw,const char *const dst,const char *const 
       .nlmsg_type= add ? RTM_NEWROUTE : RTM_DELROUTE ,
       .nlmsg_flags=(NLM_F_REQUEST|NLM_F_ACK|(add?(NLM_F_EXCL|NLM_F_CREATE):0)),
       .nlmsg_seq=0,
-      .nlmsg_pid=0
+      .nlmsg_pid=getpid()
     },
     .rt={
       .rtm_family=AF_INET,
@@ -202,7 +224,7 @@ void ask_route(){
       .nlmsg_type=RTM_GETROUTE,
       .nlmsg_flags=NLM_F_REQUEST|NLM_F_ROOT,
       .nlmsg_seq=0,
-      .nlmsg_pid=0
+      .nlmsg_pid=getpid()
     },
     .rt={
       .rtm_family=AF_INET,
@@ -448,7 +470,7 @@ void print_link(){
       .nlmsg_type=RTM_GETLINK,
       .nlmsg_flags=NLM_F_REQUEST|NLM_F_ROOT,
       .nlmsg_seq=0,
-      .nlmsg_pid=0
+      .nlmsg_pid=getpid()
     },
     .ifi={
       .ifi_family=AF_UNSPEC,
@@ -538,6 +560,7 @@ void print_link(){
         // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net
         // /sys/class/net/<iface>/operstate (RFC2863)
         // https://www.kernel.org/doc/Documentation/networking/operstates.txt
+
         case IFLA_OPERSTATE:switch(*(uint8_t*)RTA_DATA(rta)){
           case IF_OPER_UNKNOWN:printf("unk ");break;
           case IF_OPER_DOWN:printf("down ");break;
@@ -855,8 +878,51 @@ void print_addr(){
 
 }
 
-void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
+void tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
   
+  assert(0==getuid());
+  assert(prefixlen<=32);
+  assert(ipv4&&strlen(ipv4));
+  assert(dev&&strlen(dev));
+  const unsigned index=if_nametoindex(dev);
+  assert(index>=5);
+
+  // RTM_NEWADDR only
+  typedef struct {
+    struct nlmsghdr nh;
+    struct ifaddrmsg ifa;
+    char attrbuf[SZ];
+  } Req;
+
+  Req req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
+      .nlmsg_type=RTM_NEWADDR ,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifa={
+      .ifa_family=AF_INET,
+      .ifa_prefixlen=prefixlen,
+      .ifa_flags=IFA_F_PERMANENT,
+      .ifa_scope=RT_SCOPE_UNIVERSE,
+      .ifa_index=index
+    },
+    .attrbuf={}
+  };
+
+  // attr(&req.nh,sizeof(Req),IFA_LABEL,dev);
+  // attr(&req.nh,sizeof(Req),IFA_FLAGS,&(unsigned){IFA_F_PERMANENT});
+  attr(&req.nh,sizeof(Req),IFA_ADDRESS,ipv4);
+  attr(&req.nh,sizeof(Req),IFA_LOCAL,ipv4);
+
+  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+
+  receive();
+  ack();
+  clearbuf();
+
 }
 
 void set(){
@@ -894,11 +960,12 @@ void reset(){
 int main(){
 
   init();
-  print_addr();
+  // print_addr();
   // print_link();
   // print_route();
 
-  // set();
+  set();
+  print_addr();
   // print_link();
   // print_route();
 
