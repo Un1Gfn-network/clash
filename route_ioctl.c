@@ -442,9 +442,19 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
 
 }
 
+void tun_up(const char *const dev){
+  assert(0==getuid());
+  struct ifreq ifr={};
+  strncpy(ifr.ifr_name,dev,IFNAMSIZ);
+  assert(0==ioctl(sockfd,SIOCGIFFLAGS,&ifr));
+  ifr.ifr_flags|=IFF_UP;
+  assert(0==ioctl(sockfd,SIOCSIFFLAGS,&ifr));
+}
+
 void set(){
   tun_create(TUN);
-  // tun_addr(TUN,"10.0.0.1",24);
+  tun_addr(TUN,"10.0.0.1",24);
+  tun_up(TUN);
   // del_gateway(gateway);
   // add_gateway("10.0.0.2");
   // server=json_load_server();
