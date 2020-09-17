@@ -7,6 +7,7 @@
 char *json_load_server(){
 
   json_object *j=json_object_from_file(SS_LOCAL_JSON);
+  // assert((SS_LOCAL_JSON" not found",j));
   assert(j);
   assert(json_type_object==json_object_get_type(j));
 

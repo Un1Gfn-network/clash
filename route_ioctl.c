@@ -405,6 +405,14 @@ void tun_create(char *dev){
   // assert(0==ioctl(sockfd,SIOCSIFTXQLEN,&ifr));
 }
 
+void cidr_mask(unsigned n,struct in_addr *sin_addr_p){
+  assert(n<=32);
+  unsigned host=0;
+  for(;n>0;--n)
+    host|=((1<<(32U-n))); // ((1<<31)>>(n-1));
+  sin_addr_p->s_addr=htonl(host);
+}
+
 void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
 
   struct sockaddr_in *sin=NULL;
@@ -422,13 +430,7 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
   sin=(struct sockaddr_in*)(&(mask.ifr_netmask));
   sin->sin_family=AF_INET;
   sin->sin_port=0;
-
-  assert(n<=32);
-  unsigned host=0;
-  for(;n>0;--n)
-    host|=((1<<(32-n))); // ((1<<31)>>(n-1));
-  sin->sin_addr.s_addr=htonl(host);
-
+  cidr_mask(n,&(sin->sin_addr));
   // char s[SZ]={};
   // assert(s==inet_ntop(AF_INET,&(sin->sin_addr),s,INET_ADDRSTRLEN));
   // printf("%s\n",s);
@@ -438,7 +440,7 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
 
 void set(){
   tun_create(TUN);
-  tun_addr(TUN,"10.0.0.1",24);
+  // tun_addr(TUN,"10.0.0.1",24);
   // del_gateway(gateway);
   // add_gateway("10.0.0.2");
   // server=json_load_server();

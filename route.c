@@ -218,7 +218,14 @@ void ask_route(){
   },sizeof(Req),0));
 }
 
-void steal_flag(unsigned *const flags,const unsigned f,const char *const s){
+void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
+  if(*flags&f){
+    printf("%s ",s);
+    *flags=*flags&(~f);
+  }
+}
+
+void steal_flag_32(unsigned *const flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
@@ -492,14 +499,14 @@ void print_link(){
     #pragma GCC error "include <linux/if.h> instead of <net/if.h>"
     #endif
     // /usr/include/linux/if.h
-    steal_flag(&(ifm->ifi_flags),IFF_UP,"up");
-    steal_flag(&(ifm->ifi_flags),IFF_BROADCAST,"broadcast");
-    steal_flag(&(ifm->ifi_flags),IFF_LOOPBACK,"lo");
-    steal_flag(&(ifm->ifi_flags),IFF_POINTOPOINT,"p2p");
-    steal_flag(&(ifm->ifi_flags),IFF_RUNNING,"running");
-    steal_flag(&(ifm->ifi_flags),IFF_NOARP,"noarp");
-    steal_flag(&(ifm->ifi_flags),IFF_MULTICAST,"multicast");
-    steal_flag(&(ifm->ifi_flags),IFF_LOWER_UP,"l1up");
+    steal_flag_32(&(ifm->ifi_flags),IFF_UP,"up");
+    steal_flag_32(&(ifm->ifi_flags),IFF_BROADCAST,"broadcast");
+    steal_flag_32(&(ifm->ifi_flags),IFF_LOOPBACK,"lo");
+    steal_flag_32(&(ifm->ifi_flags),IFF_POINTOPOINT,"p2p");
+    steal_flag_32(&(ifm->ifi_flags),IFF_RUNNING,"running");
+    steal_flag_32(&(ifm->ifi_flags),IFF_NOARP,"noarp");
+    steal_flag_32(&(ifm->ifi_flags),IFF_MULTICAST,"multicast");
+    steal_flag_32(&(ifm->ifi_flags),IFF_LOWER_UP,"l1up");
     assert(ifm->ifi_flags==0);
     printf("\n");
 
@@ -583,12 +590,12 @@ void print_link(){
         // /usr/include/linux/if_link.h
         // struct rtnl_link_stats
         // struct rtnl_link_stats64 
-        case IFLA_STATS64:printf("(stats64_%lu) ",RTA_PAYLOAD(rta));break;
-        case IFLA_STATS:printf("(stats_%lu) ",RTA_PAYLOAD(rta));break;
-        case IFLA_XDP:printf("(xdp_%lu) ",RTA_PAYLOAD(rta));break; // https://en.wikipedia.org/wiki/Express_Data_Path
-        case IFLA_LINKINFO:printf("(linkinfo_%lu) ",RTA_PAYLOAD(rta));break;
-        case IFLA_AF_SPEC:printf("(afspec_%lu) ",RTA_PAYLOAD(rta));break;
-        case IFLA_MAP:printf("(map_%lu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_STATS64:printf("(stats64_%zu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_STATS:printf("(stats_%zu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_XDP:printf("(xdp_%zu) ",RTA_PAYLOAD(rta));break; // https://en.wikipedia.org/wiki/Express_Data_Path
+        case IFLA_LINKINFO:printf("(linkinfo_%zu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_AF_SPEC:printf("(afspec_%zu) ",RTA_PAYLOAD(rta));break;
+        case IFLA_MAP:printf("(map_%zu) ",RTA_PAYLOAD(rta));break;
 
         // case IFLA_XXX:bytes(RTA_DATA(rta),RTA_PAYLOAD(rta));break;
 
@@ -718,11 +725,138 @@ void tun_del(const char *const dev){
 
 }
 
+void cidr_mask(unsigned prefixlen,struct in_addr *sin_addr_p){
+  assert(prefixlen<=32);
+  unsigned host=0;
+  for(;prefixlen>0;--prefixlen)
+    host|=((1<<(32U-prefixlen))); // ((1<<31)>>(prefixlen-1));
+  sin_addr_p->s_addr=htonl(host);
+}
+
+void print_addr(){
+
+  typedef struct {
+    struct nlmsghdr nh;
+    struct ifaddrmsg ifa;
+  } Req;
+
+  assert(NLMSG_LENGTH(sizeof(struct ifaddrmsg))==sizeof(Req));
+  assert(sizeof(Req)==send(fd,&(Req){
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
+      .nlmsg_type=RTM_GETADDR,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ROOT,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifa={
+      .ifa_family=AF_UNSPEC, // AF_INET/AF_INET6
+      .ifa_prefixlen=0,
+      .ifa_flags=0,
+      .ifa_scope=0,
+      .ifa_index=0
+    }
+  },sizeof(Req),0));
+
+  receive();
+
+  printf("\n");
+  struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
+
+    if(nh->nlmsg_type==NLMSG_DONE)
+      break;
+
+    assert(
+      // nh->nlmsg_len
+      nh->nlmsg_type==RTM_NEWADDR &&
+      nh->nlmsg_flags==NLM_F_MULTI &&
+      nh->nlmsg_seq==0 &&
+      nh->nlmsg_pid==(unsigned)getpid()
+    );
+
+    struct ifaddrmsg *const ifa=(struct ifaddrmsg*)NLMSG_DATA(nh);
+
+    printf("#%u ",ifa->ifa_index);
+    steal_flag_8(&(ifa->ifa_flags),IFA_F_PERMANENT,"perm");
+    assert(ifa->ifa_flags==0);
+    switch(ifa->ifa_scope){
+      case RT_SCOPE_UNIVERSE:printf("universe ");break;
+      case RT_SCOPE_LINK:printf("link ");break;
+      case RT_SCOPE_HOST:printf("host ");break;
+      default:assert(false);break;
+    }
+
+    struct rtattr *rta=(struct rtattr*)IFA_RTA(ifa);
+    int rtl=IFA_PAYLOAD(nh);
+
+    char addr[INET6_ADDRSTRLEN]={};
+    char local[INET6_ADDRSTRLEN]={};
+    char bcast[INET6_ADDRSTRLEN]={};
+
+    for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl))switch(rta->rta_type){
+
+      case IFA_LABEL:printf("%s ",(char*)RTA_DATA(rta));break;
+
+      case IFA_ADDRESS:assert(addr==inet_ntop(ifa->ifa_family,RTA_DATA(rta),addr,INET6_ADDRSTRLEN));break;
+      case IFA_LOCAL:assert(local==inet_ntop(ifa->ifa_family,RTA_DATA(rta),local,INET6_ADDRSTRLEN));break;
+      case IFA_BROADCAST:assert(bcast==inet_ntop(ifa->ifa_family,RTA_DATA(rta),bcast,INET6_ADDRSTRLEN));break;
+
+      case IFA_FLAGS:
+        ((*(unsigned*)RTA_DATA(rta))&IFA_F_NOPREFIXROUTE)?assert(ifa->ifa_scope==RT_SCOPE_UNIVERSE):0;
+        steal_flag_32((unsigned*)RTA_DATA(rta),IFA_F_PERMANENT,"perm");
+        steal_flag_32((unsigned*)RTA_DATA(rta),IFA_F_NOPREFIXROUTE,"noprefixroute");
+        // printf("%zu ",RTA_PAYLOAD(rta));
+        // printf("0x%X ",*(unsigned*)RTA_DATA(rta));fflush(stdout);
+        assert(0==*(unsigned*)RTA_DATA(rta));
+        break;
+
+      case IFA_CACHEINFO:break;
+      // case IFA_CACHEINFO:{
+      //   const struct ifa_cacheinfo *ifci=RTA_DATA(rta);
+      //   printf("(%u %u %u %u) ",
+      //     ifci->ifa_prefered,
+      //     ifci->ifa_valid,
+      //     ifci->cstamp,
+      //     ifci->tstamp
+      //   );
+      //   break;
+      // }
+
+      default:assert(false);break;
+
+    }
+
+    printf("\n");
+
+    if(!strlen(addr)){
+      assert((!strlen(local))&&(!strlen(bcast)));
+    }else{
+      printf("%s/%u ",addr,ifa->ifa_prefixlen);
+      // strlen(local)?printf("local %s ",local):0;
+      strlen(bcast)?printf("bcast %s ",bcast):0;
+      strlen(local)?(printf("local "),assert(0==strncmp(addr,local,INET6_ADDRSTRLEN))):0;
+      printf("\n");
+    }
+
+    printf("\n");
+
+
+  }
+
+  clearbuf();
+
+}
+
+void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
+  
+}
+
 void set(){
 
   // tun_up();
   // tun_flush();
-  // tun_addr(TUN,"10.0.0.1",24);
+  tun_addr(TUN,"10.0.0.1",24);
 
   // get_gateway(gw);
   // del_gateway(gw);
@@ -753,6 +887,7 @@ void reset(){
 int main(){
 
   init();
+  print_addr();
   // print_link();
   // print_route();
 
@@ -761,7 +896,7 @@ int main(){
   // print_route();
 
   // external();
-  reset();
+  // reset();
   // print_link();
   // print_route();
 

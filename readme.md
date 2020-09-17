@@ -1,3 +1,5 @@
+[Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
+
 print_link()
 
 ```
