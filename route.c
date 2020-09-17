@@ -41,6 +41,12 @@ typedef struct {
   unsigned v;
 } V32;
 
+// REM_GETLINK/REM_GETLINK(tun_up) only
+typedef struct {
+  struct nlmsghdr nh;
+  struct ifinfomsg ifi;
+} Req_link;
+
 void init(){
   fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
   assert(fd==3);
@@ -457,14 +463,7 @@ void mac_colon(const void *const p,char *const s){
 
 void print_link(){
 
-  // REM_GETLINK only
-  typedef struct {
-    struct nlmsghdr nh;
-    struct ifinfomsg ifi;
-  } Req;
-
-  assert(NLMSG_LENGTH(sizeof(struct ifinfomsg))==sizeof(Req));
-  assert(sizeof(Req)==send(fd,&(Req){
+  assert(sizeof(Req_link)==send(fd,&(Req_link){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_GETLINK,
@@ -474,13 +473,12 @@ void print_link(){
     },
     .ifi={
       .ifi_family=AF_UNSPEC,
-      // .ifi_family=AF_INET,
       .ifi_type=0,
       .ifi_index=0,
       .ifi_flags=0,
       .ifi_change=0xFFFFFFFF,
     }
-  },sizeof(Req),0));
+  },sizeof(Req_link),0));
 
   receive();
 
@@ -925,11 +923,43 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
 
 }
 
+void tun_up(const char *const dev){
+
+  assert(0==getuid());
+  assert(dev&&strlen(dev));
+  const unsigned index=if_nametoindex(dev);
+  assert(index>=5);
+
+  assert(sizeof(Req_link)==send(fd,&(Req_link){
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_NEWLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      .ifi_type=0,
+      .ifi_index=index,
+      .ifi_flags=IFF_UP,
+      // https://www.spinics.net/lists/netdev/msg598191.html
+      .ifi_change=IFF_UP // 0xFFFFFFFF
+    }
+  },sizeof(Req_link),0));
+
+  receive();
+  ack();
+  clearbuf();
+
+}
+
 void set(){
 
-  // tun_up();
-  // tun_flush();
+  // tun_create(TUN); // Fail
   tun_addr(TUN,"10.0.0.1",24);
+  tun_up(TUN);
+  // tun_flush();
 
   // get_gateway(gw);
   // del_gateway(gw);
@@ -965,7 +995,7 @@ int main(){
   // print_route();
 
   set();
-  print_addr();
+  // print_addr();
   // print_link();
   // print_route();
 
