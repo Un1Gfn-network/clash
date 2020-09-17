@@ -15,7 +15,7 @@
 #include <linux/if.h> // IFLA_OPER*
 extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 
-#include "def.h" // TUN
+#include "def.h" // TUN WLO
 
 // 11:22:33:44:55:66
 #define MAC_L (2*6+5)
@@ -160,15 +160,18 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
 
 }
 
-#define add_route(dst,via) route(true,false,dst,via)
-#define del_route(dst,via) route(false,false,dst,via)
-#define add_gateway(via) route(true,true,NULL,via)
-#define del_gateway(via) route(false,true,NULL,via)
-void route(const bool add,const bool gw,const char *const dst,const char *const via){
+#define add_route(dev,dst,via) route(true,false,dev,dst,via)
+#define del_route(dev,dst,via) route(false,false,dev,dst,via)
+#define add_gateway(dev,via) route(true,true,dev,NULL,via)
+#define del_gateway(dev,via) route(false,true,dev,NULL,via)
+void route(const bool add,const bool gw,const char *const dev,const char *const dst,const char *const via){
 
+  assert(dev&&strlen(dev));
+  const int oif=if_nametoindex(dev);
+  assert(oif>=1);
+  assert(gw?(!dst):(dst&&strlen(dst)));
+  assert(via&&strlen(via));
   assert(0==getuid());
-  if(gw)
-    assert(!dst);
 
   // RTM_DELROUTE/RTM_ADDROUTE only
   typedef struct {
@@ -205,7 +208,7 @@ void route(const bool add,const bool gw,const char *const dst,const char *const 
   // int len=sizeof(Req)-NLMSG_LENGTH(sizeof(struct rtmsg));
   (!gw)?attr(&req.nh,sizeof(Req),RTA_DST,dst):0;
   attr(&req.nh,sizeof(Req),RTA_GATEWAY,via);
-  attr(&req.nh,sizeof(Req),RTA_OIF,&((int){3}));
+  attr(&req.nh,sizeof(Req),RTA_OIF,&oif);
 
   assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
   receive();
@@ -923,7 +926,10 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
 
 }
 
-void tun_up(const char *const dev){
+
+#define tun_up(D) flags(true,D)
+#define tun_down(D) flags(false,D) // Can change qdisc from fq_codel to noop?
+void flags(const bool up,const char *const dev){
 
   assert(0==getuid());
   assert(dev&&strlen(dev));
@@ -942,7 +948,7 @@ void tun_up(const char *const dev){
       .ifi_family=AF_UNSPEC,
       .ifi_type=0,
       .ifi_index=index,
-      .ifi_flags=IFF_UP,
+      .ifi_flags=up?IFF_UP:0,
       // https://www.spinics.net/lists/netdev/msg598191.html
       .ifi_change=IFF_UP // 0xFFFFFFFF
     }
@@ -956,33 +962,32 @@ void tun_up(const char *const dev){
 
 void set(){
 
-  // tun_create(TUN); // Fail
-  tun_addr(TUN,"10.0.0.1",24);
-  tun_up(TUN);
-  // tun_flush();
+  // // tun_create(TUN); // Fail
+  // // getchar();
+  // tun_addr(TUN,"10.0.0.1",24);
+  // tun_up(TUN);
 
   // get_gateway(gw);
-  // del_gateway(gw);
-  // add_gateway("10.0.0.2");
+  // del_gateway(WLO,gw);
+  // add_gateway(TUN,"10.0.0.2");
 
   // server=json_load_server();
   // assert(server);
   // printf("%s\n",server);
-  // add_route(server,gw);
+  // add_route(WLO,server,gw);
 
 }
 
 void reset(){
 
-  // del_route(server,gw);
+  // del_route(WLO,server,gw);
   // free(server);
   // server=NULL;
 
-  // del_gateway("10.0.0.2");
-  // add_gateway(gw);
+  // del_gateway(TUN,"10.0.0.2");
+  // add_gateway(WLO,gw);
 
-  // tun_flush();
-  // tun_down();
+  // tun_down(TUN);
   tun_del(TUN);
 
 }
@@ -994,18 +999,16 @@ int main(){
   // print_link();
   // print_route();
 
-  set();
+  // set();
   // print_addr();
   // print_link();
   // print_route();
 
   // external();
-  // reset();
+  reset();
   // print_link();
   // print_route();
 
   end();
 
 }
-
-

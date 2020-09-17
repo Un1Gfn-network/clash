@@ -63,15 +63,20 @@ void end(){
   sockfd=-1;
 }
 
-#define add_route(IP,VIA) route(true,false,IP,VIA)
-#define del_route(IP,VIA) route(false,false,IP,VIA)
-#define add_gateway(VIA) route(true,true,NULL,VIA)
-#define del_gateway(VIA) route(false,true,NULL,VIA)
-void route(const bool add,const bool net,const char *const dst,const char *const gw){
+// "net": true for gateway, false for route
+#define add_route(D,IP,VIA) route(true,false,D,IP,VIA)
+#define del_route(D,IP,VIA) route(false,false,D,IP,VIA)
+#define add_gateway(D,VIA) route(true,true,D,NULL,VIA)
+#define del_gateway(D,VIA) route(false,true,D,NULL,VIA)
+void route(const bool add,const bool net,const char *const dev,const char *const dst,const char *const gw){
 
   assert(0==getuid());
-  assert( ( (bool)dst ^ (bool)net ) == 1 );
-  assert(gw);
+
+  assert(dev&&strlen(dev));
+  // assert( ( (bool)dst ^ (bool)net ) == 1 );
+  assert(net?(!dst):(dst&&strlen(dst)));
+  assert(gw&&strlen(gw));
+
   struct rtentry e={};
 
   // Destination
@@ -98,7 +103,10 @@ void route(const bool add,const bool net,const char *const dst,const char *const
   };
 
   e.rt_flags = RTF_UP|RTF_GATEWAY|RTF_STATIC|(net?0:RTF_HOST) ;
-  e.rt_dev=DEV;
+
+  char s[IFNAMSIZ]={};
+  strncpy(s,dev,IFNAMSIZ);
+  e.rt_dev=s;
 
   errno=0;
   if(-1==ioctl(sockfd,add?SIOCADDRT:SIOCDELRT,&e)){
@@ -465,25 +473,34 @@ void flags(const bool up,const char *const dev){
 }
 
 void set(){
+
   tun_create(TUN);
+  // exit(0);
   tun_addr(TUN,"10.0.0.1",24);
   tun_up(TUN);
-  // del_gateway(gateway);
-  // add_gateway("10.0.0.2");
-  // server=json_load_server();
-  // assert(server);
-  // printf("%s\n",server);
-  // add_route(server,gateway);
+
+  del_gateway(WLO,gateway);
+  add_gateway(TUN,"10.0.0.2");
+
+  server=json_load_server();
+  assert(server);
+  printf("%s\n",server);
+  add_route(WLO,server,gateway);
+
 }
 
 void reset(){
-  // del_route(server,gateway);
-  // free(server);
-  // server=NULL;
-  // del_gateway("10.0.0.2");
-  // add_gateway(gateway);
-  // tun_down(TUN); // Does not change qdisc from fq_codel to noop
+
+  del_route(WLO,server,gateway);
+  free(server);
+  server=NULL;
+
+  del_gateway(TUN,"10.0.0.2");
+  add_gateway(WLO,gateway);
+
+  tun_down(TUN); // Does not change qdisc from fq_codel to noop
   // tun_del(TUN); // Fail
+
 }
 
 int main(){
