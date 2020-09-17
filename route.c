@@ -768,18 +768,36 @@ void print_addr(){
       break;
 
     assert(
-      // nh->nlmsg_len
       nh->nlmsg_type==RTM_NEWADDR &&
       nh->nlmsg_flags==NLM_F_MULTI &&
       nh->nlmsg_seq==0 &&
       nh->nlmsg_pid==(unsigned)getpid()
     );
 
+    // ID
     struct ifaddrmsg *const ifa=(struct ifaddrmsg*)NLMSG_DATA(nh);
-
     printf("#%u ",ifa->ifa_index);
-    steal_flag_8(&(ifa->ifa_flags),IFA_F_PERMANENT,"perm");
-    assert(ifa->ifa_flags==0);
+
+    // Load table
+    void* bt[IFA_MAX+1]={};
+    struct rtattr *rta=(struct rtattr*)IFA_RTA(ifa);
+    int rtl=IFA_PAYLOAD(nh);
+    for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl)){
+      assert(
+        rta->rta_type==IFA_LABEL ||
+        rta->rta_type==IFA_ADDRESS ||
+        rta->rta_type==IFA_LOCAL ||
+        rta->rta_type==IFA_BROADCAST ||
+        rta->rta_type==IFA_FLAGS ||
+        rta->rta_type==IFA_CACHEINFO
+      );
+      (rta->rta_type!=IFA_CACHEINFO)?bt[rta->rta_type]=RTA_DATA(rta):0;
+    }
+
+    // Name
+    (bt[IFA_LABEL])?printf("%s ",(char*)bt[IFA_LABEL]):0;
+
+    // Scope
     switch(ifa->ifa_scope){
       case RT_SCOPE_UNIVERSE:printf("universe ");break;
       case RT_SCOPE_LINK:printf("link ");break;
@@ -787,55 +805,44 @@ void print_addr(){
       default:assert(false);break;
     }
 
-    struct rtattr *rta=(struct rtattr*)IFA_RTA(ifa);
-    int rtl=IFA_PAYLOAD(nh);
+    // Flags in ifaddrmsg
+    steal_flag_8(&(ifa->ifa_flags),IFA_F_PERMANENT,"perm");
+    assert(ifa->ifa_flags==0);
 
-    char addr[INET6_ADDRSTRLEN]={};
-    char local[INET6_ADDRSTRLEN]={};
-    char bcast[INET6_ADDRSTRLEN]={};
+    printf("| ");
 
-    for(;RTA_OK(rta,rtl);rta=RTA_NEXT(rta,rtl))switch(rta->rta_type){
+    // Flags in rtattr
+    ((*(unsigned*)(bt[IFA_FLAGS]))&IFA_F_NOPREFIXROUTE)?assert(ifa->ifa_scope==RT_SCOPE_UNIVERSE):0;
+    steal_flag_32((unsigned*)(bt[IFA_FLAGS]),IFA_F_PERMANENT,"perm");
+    steal_flag_32((unsigned*)(bt[IFA_FLAGS]),IFA_F_NOPREFIXROUTE,"noprefixroute");
+    // printf("%zu ",RTA_PAYLOAD(rta));
+    // printf("0x%X ",*(unsigned*)(bt[IFA_FLAGS]));fflush(stdout);
+    assert(0==*(unsigned*)(bt[IFA_FLAGS]));
 
-      case IFA_LABEL:printf("%s ",(char*)RTA_DATA(rta));break;
-
-      case IFA_ADDRESS:assert(addr==inet_ntop(ifa->ifa_family,RTA_DATA(rta),addr,INET6_ADDRSTRLEN));break;
-      case IFA_LOCAL:assert(local==inet_ntop(ifa->ifa_family,RTA_DATA(rta),local,INET6_ADDRSTRLEN));break;
-      case IFA_BROADCAST:assert(bcast==inet_ntop(ifa->ifa_family,RTA_DATA(rta),bcast,INET6_ADDRSTRLEN));break;
-
-      case IFA_FLAGS:
-        ((*(unsigned*)RTA_DATA(rta))&IFA_F_NOPREFIXROUTE)?assert(ifa->ifa_scope==RT_SCOPE_UNIVERSE):0;
-        steal_flag_32((unsigned*)RTA_DATA(rta),IFA_F_PERMANENT,"perm");
-        steal_flag_32((unsigned*)RTA_DATA(rta),IFA_F_NOPREFIXROUTE,"noprefixroute");
-        // printf("%zu ",RTA_PAYLOAD(rta));
-        // printf("0x%X ",*(unsigned*)RTA_DATA(rta));fflush(stdout);
-        assert(0==*(unsigned*)RTA_DATA(rta));
-        break;
-
-      case IFA_CACHEINFO:break;
-      // case IFA_CACHEINFO:{
-      //   const struct ifa_cacheinfo *ifci=RTA_DATA(rta);
-      //   printf("(%u %u %u %u) ",
-      //     ifci->ifa_prefered,
-      //     ifci->ifa_valid,
-      //     ifci->cstamp,
-      //     ifci->tstamp
-      //   );
-      //   break;
-      // }
-
-      default:assert(false);break;
-
-    }
-
+    // const struct ifa_cacheinfo *const ifci=bt[IFA_CACHEINFO];
+    // printf("(%u %u %u %u) ",
+    //   ifci->ifa_prefered,
+    //   ifci->ifa_valid,
+    //   ifci->cstamp,
+    //   ifci->tstamp
+    // );
     printf("\n");
 
-    if(!strlen(addr)){
-      assert((!strlen(local))&&(!strlen(bcast)));
+    // Address
+    assert(ifa->ifa_family==AF_INET||ifa->ifa_family==AF_INET6);
+    if(!bt[IFA_ADDRESS]){
+      assert((!bt[IFA_LOCAL])&&(!bt[IFA_BROADCAST]));
     }else{
-      printf("%s/%u ",addr,ifa->ifa_prefixlen);
-      // strlen(local)?printf("local %s ",local):0;
-      strlen(bcast)?printf("bcast %s ",bcast):0;
-      strlen(local)?(printf("local "),assert(0==strncmp(addr,local,INET6_ADDRSTRLEN))):0;
+      char s[INET6_ADDRSTRLEN]={};
+      assert(s==inet_ntop(ifa->ifa_family,bt[IFA_ADDRESS],s,INET6_ADDRSTRLEN));
+      printf("%s/%u ",s,ifa->ifa_prefixlen);
+      bzero(s,INET6_ADDRSTRLEN);
+      if(bt[IFA_BROADCAST]){
+        assert(s==inet_ntop(ifa->ifa_family,bt[IFA_BROADCAST],s,INET6_ADDRSTRLEN));
+        printf("bcast %s ",s);
+        bzero(s,INET6_ADDRSTRLEN);
+      }
+      (bt[IFA_LOCAL])?(printf("local "),assert(0==memcmp(bt[IFA_ADDRESS],bt[IFA_LOCAL],sizeof(struct in_addr)))):0;
       printf("\n");
     }
 
