@@ -393,9 +393,9 @@ void all_getifaddrs(){
   free(ifa);
 }
 
-void tun_create(char *dev){
+void tun_create(const char *const dev){
   assert(0==getuid());
-  assert(dev);
+  assert(dev&&strlen(dev));
   struct ifreq ifc={.ifr_flags=IFF_TUN|IFF_NO_PI};
   strncpy(ifc.ifr_name,dev,IFNAMSIZ);
   int tunfd=open("/dev/net/tun",O_RDWR);
@@ -404,10 +404,20 @@ void tun_create(char *dev){
   assert(0==ioctl(tunfd,TUNSETPERSIST,1));
   close(tunfd);
   tunfd=-1;
-  // struct ifreq ifr={.ifr_qlen=1};
-  // strncpy(ifr.ifr_name,dev,IFNAMSIZ);
-  // assert(0==ioctl(sockfd,SIOCSIFTXQLEN,&ifr));
 }
+
+// Fail
+/*void tun_del(const char *const dev){
+  assert(0==getuid());
+  assert(dev&&strlen(dev));
+  struct ifreq ifc={};
+  strncpy(ifc.ifr_name,dev,IFNAMSIZ);
+  int tunfd=open("/dev/net/tun",O_RDWR);
+  assert(tunfd>=3);
+  assert(0==ioctl(tunfd,TUNSETPERSIST,0));
+  close(tunfd);
+  tunfd=-1;
+}*/
 
 void cidr_mask(unsigned n,struct in_addr *sin_addr_p){
   assert(n<=32);
@@ -442,12 +452,15 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
 
 }
 
-void tun_up(const char *const dev){
+#define tun_up(D) flags(true,D)
+#define tun_down(D) flags(false,D) // Does not change qdisc from fq_codel to noop
+void flags(const bool up,const char *const dev){
   assert(0==getuid());
   struct ifreq ifr={};
   strncpy(ifr.ifr_name,dev,IFNAMSIZ);
   assert(0==ioctl(sockfd,SIOCGIFFLAGS,&ifr));
-  ifr.ifr_flags|=IFF_UP;
+  if(up) ifr.ifr_flags|=IFF_UP;
+  else ifr.ifr_flags&=(~((short)IFF_UP));
   assert(0==ioctl(sockfd,SIOCSIFFLAGS,&ifr));
 }
 
@@ -469,6 +482,8 @@ void reset(){
   // server=NULL;
   // del_gateway("10.0.0.2");
   // add_gateway(gateway);
+  // tun_down(TUN); // Does not change qdisc from fq_codel to noop
+  // tun_del(TUN); // Fail
 }
 
 int main(){
@@ -476,8 +491,8 @@ int main(){
   init();
 
   set();
-  // getchar();
-  // reset();
+  getchar();
+  reset();
 
   // printf("\n");
   // onebyone();
