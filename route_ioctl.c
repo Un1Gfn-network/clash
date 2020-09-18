@@ -44,23 +44,18 @@
 // jserv.c
 char *json_load_server();
 
-typedef enum {
-  DEL,
-  ADD
-} OP;
-
-int sockfd=-1;
+int ioctlfd=-1;
 char *server=NULL;
 const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
 
 void init(){
-  sockfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
-  assert(sockfd==3);
+  ioctlfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+  assert(ioctlfd==3);
 }
 
 void end(){
-  close(sockfd);
-  sockfd=-1;
+  close(ioctlfd);
+  ioctlfd=-1;
 }
 
 // "net": true for gateway, false for route
@@ -109,7 +104,7 @@ void route(const bool add,const bool net,const char *const dev,const char *const
   e.rt_dev=s;
 
   errno=0;
-  if(-1==ioctl(sockfd,add?SIOCADDRT:SIOCDELRT,&e)){
+  if(-1==ioctl(ioctlfd,add?SIOCADDRT:SIOCDELRT,&e)){
     const int err=errno;
     printf("%d %s\n",err,strerror(err));
     assert(false);    
@@ -198,7 +193,7 @@ void netdevice(const char *const name){
   // SIOCGIFNAME and SIOCGIFINDEX in onebyone()
 
   REFILL();
-  assert(0==ioctl(sockfd,SIOCGIFHWADDR,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFHWADDR,&ifr));
   switch(ifr.ifr_hwaddr.sa_family){
     case ARPHRD_LOOPBACK:printf("loopback ");break;
     case ARPHRD_ETHER:printf("ethernet ");break;
@@ -209,7 +204,7 @@ void netdevice(const char *const name){
   printf("hwaddr %02x:%02x:%02x:%02x:%02x:%02x ",h[0],h[1],h[2],h[3],h[4],h[5]);
 
   REFILL();
-  assert(0==ioctl(sockfd,SIOCGIFFLAGS,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFFLAGS,&ifr));
   steal_flag_u16(&(ifr.ifr_flags),IFF_UP,"up");
   steal_flag_u16(&(ifr.ifr_flags),IFF_BROADCAST,"broadcast");
   steal_flag_u16(&(ifr.ifr_flags),IFF_LOOPBACK,"lo");
@@ -220,27 +215,27 @@ void netdevice(const char *const name){
   assert(ifr.ifr_flags==0);
 
   REFILL();
-  r=ioctl(sockfd,SIOCGIFADDR,&ifr);
+  r=ioctl(ioctlfd,SIOCGIFADDR,&ifr);
   r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr(NULL,&(ifr.ifr_addr));
 
   REFILL();
-  r=ioctl(sockfd,SIOCGIFDSTADDR,&ifr);
+  r=ioctl(ioctlfd,SIOCGIFDSTADDR,&ifr);
   r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("dst",&(ifr.ifr_dstaddr));
 
   REFILL();
-  r=ioctl(sockfd,SIOCGIFBRDADDR,&ifr);
+  r=ioctl(ioctlfd,SIOCGIFBRDADDR,&ifr);
   r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("bcast",&(ifr.ifr_dstaddr));
 
   REFILL();
-  r=ioctl(sockfd,SIOCGIFNETMASK,&ifr);
+  r=ioctl(ioctlfd,SIOCGIFNETMASK,&ifr);
   r?assert(r==-1&&errno==EADDRNOTAVAIL):showaddr("mask",&(ifr.ifr_dstaddr));
 
   REFILL();
-  assert(0==ioctl(sockfd,SIOCGIFMTU,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFMTU,&ifr));
   printf("mtu %d ",ifr.ifr_mtu);
 
   REFILL();
-  assert(0==ioctl(sockfd,SIOCGIFMAP,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFMAP,&ifr));
   // printf("%zu",sizeof(struct ifmap)); // 24
   #define map ifr.ifr_map
   (map.mem_start||map.mem_end)?printf("mem 0x%lX-0x%lX ",map.mem_start,map.mem_end):0;
@@ -249,14 +244,14 @@ void netdevice(const char *const name){
   assert(map.dma==0&&map.port==0);
 
   REFILL();
-  assert(0==ioctl(sockfd,SIOCGIFTXQLEN,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFTXQLEN,&ifr));
   printf("txq %d ",ifr.ifr_qlen);
 
   // REFILL();
   // // struct ethtool_cmd ec={.cmd=ETHTOOL_GSET};
   // struct ethtool_cmd ec={.cmd=};
   // ifr.ifr_data=&ec;
-  // r=ioctl(sockfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
+  // r=ioctl(ioctlfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
   // if(r!=0){
   //   assert( r==-1 && errno==EOPNOTSUPP);
   // }else{
@@ -266,7 +261,7 @@ void netdevice(const char *const name){
   // REFILL();
   // struct ethtool_link_settings els={.cmd=ETHTOOL_GLINKSETTINGS};
   // ifr.ifr_data=&els;
-  // r=ioctl(sockfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
+  // r=ioctl(ioctlfd,SIOCETHTOOL,&ifr); // /usr/include/linux/sockios.h
   // if(r!=0){
   //   assert( r==-1 && errno==EOPNOTSUPP);
   // }else{
@@ -292,12 +287,12 @@ void onebyone(){
     }
     // SIOCGIFNAME index to name
     struct ifreq ifrI2N=(struct ifreq){.ifr_ifindex=ifn[i].if_index};
-    assert(0==ioctl(sockfd,SIOCGIFNAME,&ifrI2N));
+    assert(0==ioctl(ioctlfd,SIOCGIFNAME,&ifrI2N));
     assert(0==strcmp(ifrI2N.ifr_name,ifn[i].if_name));
     // SIOCGIFINDEX name to index
     struct ifreq ifrN2I={};
     strncpy(ifrN2I.ifr_name,ifn[i].if_name,IFNAMSIZ);
-    assert(0==ioctl(sockfd,SIOCGIFINDEX,&ifrN2I));
+    assert(0==ioctl(ioctlfd,SIOCGIFINDEX,&ifrN2I));
     assert((unsigned)ifrN2I.ifr_ifindex==ifn[i].if_index);
     printf("#%d %s | ",ifn[i].if_index,ifn[i].if_name);
     netdevice(ifn[i].if_name);
@@ -311,7 +306,7 @@ void all_ifconf(){
     .ifc_len=0,
     .ifc_req=NULL
   };
-  assert(0==ioctl(sockfd,SIOCGIFCONF,&ifc));
+  assert(0==ioctl(ioctlfd,SIOCGIFCONF,&ifc));
   const int sz=ifc.ifc_len;
   assert(sz%sizeof(struct ifreq)==0);
   const int n=sz/sizeof(struct ifreq);
@@ -319,7 +314,7 @@ void all_ifconf(){
   char buf[sz];
   bzero(buf,sz);
   ifc.ifc_buf=buf;
-  assert(0==ioctl(sockfd,SIOCGIFCONF,&ifc));
+  assert(0==ioctl(ioctlfd,SIOCGIFCONF,&ifc));
   assert(
     ifc.ifc_len==sz &&
     (char*)ifc.ifc_req==buf
@@ -445,7 +440,7 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
   sin->sin_family=AF_INET;
   sin->sin_port=0;
   assert(1==inet_pton(AF_INET,ipv4,&(sin->sin_addr)));
-  assert(0==ioctl(sockfd,SIOCSIFADDR,&addr));
+  assert(0==ioctl(ioctlfd,SIOCSIFADDR,&addr));
 
   struct ifreq mask={};
   strncpy(mask.ifr_name,dev,IFNAMSIZ);
@@ -456,20 +451,20 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
   // char s[SZ]={};
   // assert(s==inet_ntop(AF_INET,&(sin->sin_addr),s,INET_ADDRSTRLEN));
   // printf("%s\n",s);
-  assert(0==ioctl(sockfd,SIOCSIFNETMASK,&mask));
+  assert(0==ioctl(ioctlfd,SIOCSIFNETMASK,&mask));
 
 }
 
-#define tun_up(D) flags(true,D)
-#define tun_down(D) flags(false,D) // Does not change qdisc from fq_codel to noop
+#define up(D) flags(true,D)
+#define down(D) flags(false,D) // Does not change qdisc from fq_codel to noop
 void flags(const bool up,const char *const dev){
   assert(0==getuid());
   struct ifreq ifr={};
   strncpy(ifr.ifr_name,dev,IFNAMSIZ);
-  assert(0==ioctl(sockfd,SIOCGIFFLAGS,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCGIFFLAGS,&ifr));
   if(up) ifr.ifr_flags|=IFF_UP;
   else ifr.ifr_flags&=(~((short)IFF_UP));
-  assert(0==ioctl(sockfd,SIOCSIFFLAGS,&ifr));
+  assert(0==ioctl(ioctlfd,SIOCSIFFLAGS,&ifr));
 }
 
 void set(){
@@ -477,7 +472,7 @@ void set(){
   tun_create(TUN);
   // exit(0);
   tun_addr(TUN,"10.0.0.1",24);
-  tun_up(TUN);
+  up(TUN);
 
   del_gateway(WLO,gateway);
   add_gateway(TUN,"10.0.0.2");
@@ -498,7 +493,7 @@ void reset(){
   del_gateway(TUN,"10.0.0.2");
   add_gateway(WLO,gateway);
 
-  tun_down(TUN); // Does not change qdisc from fq_codel to noop
+  down(TUN); // Does not change qdisc from fq_codel to noop
   // tun_del(TUN); // Fail
 
 }

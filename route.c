@@ -28,7 +28,7 @@ extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 // jsrv.c
 char *json_load_server();
 
-int fd=-1;
+int netlinkfd=-1;
 
 char recvbuf[SZ]={};
 int len=0;
@@ -41,16 +41,16 @@ typedef struct {
   unsigned v;
 } V32;
 
-// REM_GETLINK/REM_GETLINK(tun_up) only
+// REM_GETLINK/REM_GETLINK(up) only
 typedef struct {
   struct nlmsghdr nh;
   struct ifinfomsg ifi;
 } Req_link;
 
 void init(){
-  fd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
-  assert(fd==3);
-  assert(0==bind(fd,(struct sockaddr*)(&(struct sockaddr_nl){
+  netlinkfd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
+  assert(netlinkfd==3);
+  assert(0==bind(netlinkfd,(struct sockaddr*)(&(struct sockaddr_nl){
     .nl_family=AF_NETLINK,
     .nl_pad=0,
     .nl_pid=getpid(),
@@ -60,8 +60,8 @@ void init(){
 
 void end(){
   bzero(gw,INET_ADDRSTRLEN);
-  assert(0==close(fd));
-  fd=-1;
+  assert(0==close(netlinkfd));
+  netlinkfd=-1;
 }
 
 void clearbuf(){
@@ -71,7 +71,7 @@ void clearbuf(){
 
 void receive(){
   for(char *p=recvbuf;;){
-    const int seglen=recv(fd,p,sizeof(recvbuf)-len,0);
+    const int seglen=recv(netlinkfd,p,sizeof(recvbuf)-len,0);
     assert(seglen>=1);
     len+=seglen;
     // printf("0x%X\n",((struct nlmsghdr*)p)->nlmsg_type);
@@ -210,7 +210,7 @@ void route(const bool add,const bool gw,const char *const dev,const char *const 
   attr(&req.nh,sizeof(Req),RTA_GATEWAY,via);
   attr(&req.nh,sizeof(Req),RTA_OIF,&oif);
 
-  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+  assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0));
   receive();
   ack();
   clearbuf();
@@ -227,7 +227,7 @@ void ask_route(){
 
   // rtnetlink(3)
   assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req));
-  assert(sizeof(Req)==send(fd,&(Req){
+  assert(sizeof(Req)==send(netlinkfd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
       .nlmsg_type=RTM_GETROUTE,
@@ -466,7 +466,7 @@ void mac_colon(const void *const p,char *const s){
 
 void print_link(){
 
-  assert(sizeof(Req_link)==send(fd,&(Req_link){
+  assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_GETLINK,
@@ -710,14 +710,14 @@ typedef struct {
   attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
   // attr(&req.nh,sizeof(Req_chlink),IFLA_LINKMODE,IF_LINK_MODE_DEFAULT);
 
-  assert(sizeof(Req_chlink)==send(fd,&req,sizeof(Req_chlink),0));
+  assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0));
   receive();
   ack();
   clearbuf();
 
 }*/
 
-void tun_del(const char *const dev){
+void del_link(const char *const dev){
 
   assert(0==getuid());
   assert(dev);
@@ -742,7 +742,7 @@ void tun_del(const char *const dev){
 
   attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
 
-  assert(sizeof(Req_chlink)==send(fd,&req,sizeof(Req_chlink),0));
+  assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0));
   receive();
   ack();
   clearbuf();
@@ -765,7 +765,7 @@ void print_addr(){
   } Req;
 
   assert(NLMSG_LENGTH(sizeof(struct ifaddrmsg))==sizeof(Req));
-  assert(sizeof(Req)==send(fd,&(Req){
+  assert(sizeof(Req)==send(netlinkfd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
       .nlmsg_type=RTM_GETADDR,
@@ -872,7 +872,6 @@ void print_addr(){
 
     printf("\n");
 
-
   }
 
   clearbuf();
@@ -886,7 +885,7 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
   assert(ipv4&&strlen(ipv4));
   assert(dev&&strlen(dev));
   const unsigned index=if_nametoindex(dev);
-  assert(index>=5);
+  assert(index>0);
 
   // RTM_NEWADDR only
   typedef struct {
@@ -918,7 +917,7 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
   attr(&req.nh,sizeof(Req),IFA_ADDRESS,ipv4);
   attr(&req.nh,sizeof(Req),IFA_LOCAL,ipv4);
 
-  assert(sizeof(Req)==send(fd,&req,sizeof(Req),0));
+  assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0));
 
   receive();
   ack();
@@ -926,9 +925,8 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
 
 }
 
-
-#define tun_up(D) flags(true,D)
-#define tun_down(D) flags(false,D) // Can change qdisc from fq_codel to noop?
+#define up(D) flags(true,D)
+#define down(D) flags(false,D) // Can change qdisc from fq_codel to noop?
 void flags(const bool up,const char *const dev){
 
   assert(0==getuid());
@@ -936,7 +934,7 @@ void flags(const bool up,const char *const dev){
   const unsigned index=if_nametoindex(dev);
   assert(index>=5);
 
-  assert(sizeof(Req_link)==send(fd,&(Req_link){
+  assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_NEWLINK,
@@ -965,7 +963,7 @@ void set(){
   // // tun_create(TUN); // Fail
   // // getchar();
   // tun_addr(TUN,"10.0.0.1",24);
-  // tun_up(TUN);
+  // up(TUN);
 
   // get_gateway(gw);
   // del_gateway(WLO,gw);
@@ -987,8 +985,8 @@ void reset(){
   // del_gateway(TUN,"10.0.0.2");
   // add_gateway(WLO,gw);
 
-  // tun_down(TUN);
-  tun_del(TUN);
+  // down(TUN);
+  del_link(TUN);
 
 }
 
