@@ -1,3 +1,19 @@
+D-Bus
+
+[wpa_supplicant D-Bus API](https://w1.fi/wpa_supplicant/devel/dbus.html)
+
+[Dunst](https://wiki.archlinux.org/index.php/Dunst)
+* dunstify/notify-send
+
+org.freedesktop.Notifications'
+* Execute in `d-feet` - `Session Bus` - `org.freedesktop.Notifications` - `Object path` - `/org/freedesktop/Notifications` - `Interfaces` - `org.freedesktop.Notifications` - `Methods` - `Notify()`
+* [Architecture](https://wiki.ubuntu.com/NotifyOSD#Architecture)
+* [C glib2/gio](https://wiki.archlinux.org/index.php/Desktop_notifications#C)
+
+[Karunesh Johri D-Bus tutorial](https://www.softprayog.in/programming/d-bus-tutorial)
+
+---
+
 [SO answer ioctl/netlink interface up/down](https://stackoverflow.com/a/63950398)
 
 [Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)

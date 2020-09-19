@@ -51,3 +51,15 @@ route.out:def.h jsrv.o route.c
 
 # test.out:test.c
 # 	$(CC) $(CFLAGS) -o $@ $<
+
+###
+
+add:
+	$(MAKE) clean
+	$(MAKE) add-server.out add-client.out
+
+add-%.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags dbus-1)
+add-%.out: LIBS:=$(shell pkg-config --libs dbus-1)
+
+add-%.out: add-%.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
