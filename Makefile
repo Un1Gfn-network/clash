@@ -1,12 +1,8 @@
 ###
 
-all:
-	$(MAKE) clean
-	$(MAKE) clash_tun.out route.out route_ioctl.out
+default:bus
 
-route:
-	$(MAKE) clean
-	$(MAKE) route.out route_ioctl.out
+###
 
 clean:
 	@rm -fv *.out *.o
@@ -17,6 +13,16 @@ CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $<
+
+###
+
+all:
+	$(MAKE) clean
+	$(MAKE) clash_tun.out route.out route_ioctl.out
+
+route:
+	$(MAKE) clean
+	$(MAKE) route.out route_ioctl.out
 
 ###
 
@@ -54,12 +60,27 @@ route.out:def.h jsrv.o route.c
 
 ###
 
-add:
+# add:
+# 	$(MAKE) clean
+# 	$(MAKE) add-server.out add-client.out
+
+# add-%.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags dbus-1)
+# add-%.out: LIBS:=$(shell pkg-config --libs dbus-1)
+
+# add-%.out: add-%.o
+# 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+###
+
+# sdbusout::=$(addsuffix .out,$(addprefix bus,-service -client))
+# $(MAKE) $(word 1,$(sdbusout))
+
+bus:
 	$(MAKE) clean
-	$(MAKE) add-server.out add-client.out
+	$(MAKE) bus_notify.out
+# 	$(MAKE) bus_multiply_service.out
+# 	$(MAKE) bus_multiply_client.out
 
-add-%.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags dbus-1)
-add-%.out: LIBS:=$(shell pkg-config --libs dbus-1)
+bus_%.out: bus_%.c
+	$(CC) $(CFLAGS) $(shell pkg-config --cflags libsystemd) -o $@ $< $(shell pkg-config --libs libsystemd)
 
-add-%.out: add-%.o
-	$(CC) $(CFLAGS) -o $@ $< $(LIBS)

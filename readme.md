@@ -10,7 +10,24 @@ org.freedesktop.Notifications'
 * [Architecture](https://wiki.ubuntu.com/NotifyOSD#Architecture)
 * [C glib2/gio](https://wiki.archlinux.org/index.php/Desktop_notifications#C)
 
-[Karunesh Johri D-Bus tutorial](https://www.softprayog.in/programming/d-bus-tutorial)
+sd_bus_message_append(3) `Table 1. Item type specifiers` `TYPES STRING GRAMMAR`
+bus_message_read(3) `Table 1. Item type specifiers`
+
+busctl
+
+[impossible to get method arg name in normal output, get xml instead](https://github.com/systemd/systemd/blob/master/src/busctl/busctl-introspect.c#L429)
+
+```bash
+BUSCTL="busctl --user --no-pager"
+$BUSCTL list
+$BUSCTL tree org.freedesktop.Notifications
+$BUSCTL introspect org.freedesktop.Notifications /org/freedesktop/Notifications
+$BUSCTL --xml-interface introspect org.freedesktop.Notifications /org/freedesktop/Notifications | less -SRM +%
+$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.DBus.Peer GetMachineId
+#       call SERVICE                       OBJECT                         INTERFACE                     METHOD [SIGNATURE      [ARGUMENT...]                                  ]
+$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.Notifications Notify "susssasa{sv}i" "app_name" 0 "app_icon" "summary" "body" 0 0 0
+unset -v BUSCTL
+```
 
 ---
 
