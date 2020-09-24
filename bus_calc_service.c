@@ -8,9 +8,9 @@
 #include <stdbool.h>
 
 typedef struct {
-  int32_t x;
+  int32_t padding;
   int32_t d;
-  int32_t y;
+  int32_t padding2;
 } Data;
 
 int h1(sd_bus_message *m,void *userdata,sd_bus_error *e){
@@ -65,9 +65,14 @@ int h3_method_divide(sd_bus_message *m,void *userdata,sd_bus_error *e){
 
 int h4(sd_bus *bus,const char *path,const char *interface,const char *property,sd_bus_message *reply,void *userdata,sd_bus_error *e){
   assert(!sd_bus_error_is_set(e));
-  // assert(sd_bus_message_is_empty(reply));
-  // assert(userdata);
+  assert(!sd_bus_message_is_empty(reply));
+  // printf("%s\n",sd_bus_message_get_signature(reply,true));
+  const char *g=NULL;
+  uint8_t *y=NULL;
+  sd_bus_message_read(reply,"v","gy",&g,&y);
+  assert((!g)&&(!y));
   printf("...finally, the property callbacks attached to the request object path, interface and member are called...\n");
+  assert(userdata);
   // https://github.com/systemd/systemd/blob/26c65933babfb80130e0e9e5551cef1ee0c5ecf3/src/home/homed-home-bus.c#L40
   return sd_bus_message_append(reply,"i",*((int32_t*)userdata));
 }
