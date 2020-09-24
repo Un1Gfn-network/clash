@@ -18,29 +18,24 @@ void init(){
 
   // A
   // assert(0<=sd_bus_open_user(&bus));
-
-  // B
   // https://stackoverflow.com/questions/4384765/whats-the-difference-between-pretty-function-function-func
   // assert(0<=sd_bus_open_user_with_description(&bus, __FILE__":"S(__LINE__)":"__func__"():""send notification"));
   // assert(0<=sd_bus_open_user_with_description(&bus, __FILE__":"S(__LINE__)": send notification"));
 
-  // C
+  // B
   assert(0<=sd_bus_default_user(&bus));
 
 }
 
 void end(){
 
-  // C1
+  // sd_bus_unref(bus);
+
   // assert(0==sd_bus_flush());
   // sd_bus_close();
   // assert(NULL==sd_bus_unref(bus));
 
-  // C2
   assert(NULL==sd_bus_flush_close_unref(bus));
-
-  // C3
-  // sd_bus_default_flush_close();
 
   bus=NULL;
 
@@ -75,11 +70,15 @@ int main() {
   sd_bus_error_free(&e);
 
   assert(!sd_bus_message_is_empty(m));
+  //
   char type='\0';
   assert(1==sd_bus_message_peek_type(m,&type,NULL));
   assert(type=='u');
+  //
   assert(sd_bus_message_has_signature(m,"u"));
+  //
   assert(0==strcmp("u",sd_bus_message_get_signature(m,true)));
+  //
   uint32_t u=0;
   assert(1==sd_bus_message_read(m,"u",&u));  
   assert(!sd_bus_message_peek_type(m,NULL,NULL));

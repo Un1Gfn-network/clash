@@ -76,11 +76,21 @@ route.out:def.h jsrv.o route.c
 # $(MAKE) $(word 1,$(sdbusout))
 
 bus:
-	$(MAKE) clean
-	$(MAKE) bus_notify.out
-# 	$(MAKE) bus_multiply_service.out
-# 	$(MAKE) bus_multiply_client.out
+	@$(MAKE) clean
+# 	$(MAKE) bus_notify.out
+	$(MAKE) bus_calc_service.out
+	@./bus_calc_service.out & \
+		sleep 1 && \
+		busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Multiply xx  5 7; \
+		busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Divide   xx 72 2; \
+		busctl --user get-property net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Data; \
+		kill $$!; \
+		echo
+# 	@valgrind  --leak-check=full --show-leak-kinds=all ./bus_calc_service.out & \
+# 		sleep 3; \
+# 		busctl --user call net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Multiply xx 5 7; \
+# 		busctl --user call net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Divide xx 105 3; \
+# 		kill $$!
 
 bus_%.out: bus_%.c
 	$(CC) $(CFLAGS) $(shell pkg-config --cflags libsystemd) -o $@ $< $(shell pkg-config --libs libsystemd)
-
