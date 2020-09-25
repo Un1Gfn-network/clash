@@ -4,6 +4,7 @@ D-Bus
 
 [Dunst](https://wiki.archlinux.org/index.php/Dunst)
 * dunstify/notify-send
+http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html
 
 org.freedesktop.Notifications'
 * Execute in `d-feet` - `Session Bus` - `org.freedesktop.Notifications` - `Object path` - `/org/freedesktop/Notifications` - `Interfaces` - `org.freedesktop.Notifications` - `Methods` - `Notify()`

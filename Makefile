@@ -75,17 +75,17 @@ route.out:def.h jsrv.o route.c
 # sdbusout::=$(addsuffix .out,$(addprefix bus,-service -client))
 # $(MAKE) $(word 1,$(sdbusout))
 
-bus:
+bus_calc_call:
+	@sleep 1
+	@busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Multiply xx  5 7
+	@busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Divide   xx 72 2
+	@busctl --user get-property net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Data
+
+bus_calc_service:
+	@killall -SIGINT bus_calc_service.out || /bin/true
 	@$(MAKE) clean
-# 	$(MAKE) bus_notify.out
 	$(MAKE) bus_calc_service.out
-	@./bus_calc_service.out & \
-		sleep 1 && \
-		busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Multiply xx  5 7; \
-		busctl --user call         net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Divide   xx 72 2; \
-		busctl --user get-property net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Data; \
-		kill $$!; \
-		echo
+	@valgrind ./bus_calc_service.out
 # 	@valgrind  --leak-check=full --show-leak-kinds=all ./bus_calc_service.out & \
 # 		sleep 3; \
 # 		busctl --user call net.poettering.Calculator /net/poettering/Calculator net.poettering.Calculator Multiply xx 5 7; \

@@ -6,12 +6,20 @@
 #include <systemd/sd-bus.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <signal.h>
+
+#define SERVICE "net.poettering.Calculator"
+#define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
 typedef struct {
   int32_t padding;
   int32_t d;
   int32_t padding2;
 } Data;
+
+// https://stackoverflow.com/q/43414858/what-is-a-slot-in-sd-bus-c-language
+// sd_bus_slot *slot=NULL;
+sd_bus *bus=NULL;
 
 int h1(sd_bus_message *m,void *userdata,sd_bus_error *e){
   assert(!sd_bus_error_is_set(e));
@@ -87,13 +95,52 @@ const sd_bus_vtable vtable[]={
   SD_BUS_VTABLE_END
 };
 
+void sigint_ignore();
+void quit(const int garbage){
+  sigint_ignore();
+  assert(garbage==SIGINT);
+  // sd_bus_slot_unref(slot);
+  // sd_bus_detach_event
+  // sd_event_unref
+  assert(0<=sd_bus_release_name(bus,SERVICE));
+  assert(NULL==sd_bus_flush_close_unref(bus));
+  bus=NULL;
+  eprintf("exit\n");
+  exit(0);
+}
+
+void sigint_ignore(){
+  struct sigaction oldact={};
+  assert(0==sigaction(SIGINT,&(struct sigaction){
+    .sa_handler=SIG_IGN,
+    // .sa_sigaction=NULL, // initialized field overwritten
+    .sa_mask={},
+    .sa_flags=0,
+    .sa_restorer=NULL
+  },&oldact));
+  // printf("%p\n",oldact.sa_handler);
+  // exit(EXIT_FAILURE);
+  assert(oldact.sa_handler==&quit||oldact.sa_handler==SIG_IGN||oldact.sa_handler==SIG_DFL);
+}
+
+void sigint_allow(){
+  struct sigaction oldact={};
+  assert(0==sigaction(SIGINT,&(struct sigaction){
+    .sa_handler=&quit,
+    // .sa_sigaction=NULL, // initialized field overwritten
+    .sa_mask={},
+    .sa_flags=0,
+    .sa_restorer=NULL
+  },&oldact));
+  assert(oldact.sa_handler==SIG_IGN);
+}
+
 int main(){
 
-  Data data={.d=114514};
+  sigint_ignore();
+  // sleep(100);
 
-  // https://stackoverflow.com/q/43414858/what-is-a-slot-in-sd-bus-c-language
-  // sd_bus_slot *slot=NULL;
-  sd_bus *bus=NULL;
+  Data data={.d=114514};
 
   assert(0==unsetenv("DBUS_SESSION_BUS_ADDRESS"));
   assert(0==unsetenv("DBUS_SYSTEM_BUS_ADDRESS"));
@@ -105,7 +152,7 @@ int main(){
     bus,
     NULL,
     "/net/poettering/Calculator", // Path-to-object
-    "net.poettering.Calculator",  // Interface
+    SERVICE,  // Interface
     vtable,
     &data
   );
@@ -114,22 +161,24 @@ int main(){
     assert(false);
   }
 
-  /* Take a well-known service name so that clients can find us */
-  assert(1==sd_bus_request_name(bus,"net.poettering.Calculator",0));
+  assert(0<=sd_bus_request_name(bus,SERVICE,0L));
+
+  // sd-event(3)
+  // sd_event_default
+  // sd_bus_attach_event
 
   for(;;){
-
-    /* Process requests */
-    int r=sd_bus_process(bus,NULL);
-    assert(r>=0);
-    if(r==0) /* Wait for the next request to process */
-      assert(0<=sd_bus_wait(bus,(uint64_t) -1));
-    /* we processed a request,try to process another one,right-away */
+    const int r=sd_bus_process(bus,NULL);
+    if(r==0){
+      sigint_allow();
+      assert(1==sd_bus_wait(bus,UINT64_MAX));
+      sigint_ignore();
+    }else{
+      assert(r==1);
+    }
   }
 
-  // sd_bus_slot_unref(slot);
-  assert(NULL==sd_bus_flush_close_unref(bus));
-  bus=NULL;
-  return EXIT_SUCCESS;
+  assert(false);
+  return EXIT_FAILURE;
 
 }
