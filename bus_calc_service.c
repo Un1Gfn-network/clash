@@ -87,16 +87,6 @@ int h4(sd_bus *bus,const char *path,const char *interface,const char *property,s
   return sd_bus_message_append(reply,"i",*((int32_t*)userdata));
 }
 
-const sd_bus_vtable vtable[]={
-  SD_BUS_VTABLE_START(0),
-  SD_BUS_METHOD("Multiply","xx","x",&h3_method_multiply ,SD_BUS_VTABLE_UNPRIVILEGED),
-  SD_BUS_METHOD("Divide"  ,"xx","x",&h3_method_divide   ,SD_BUS_VTABLE_UNPRIVILEGED),
-  // https://github.com/systemd/systemd/blob/90e74a66e663f1776457d599cb7d5ce44785a56c/src/core/dbus-job.c#L137
-  SD_BUS_PROPERTY("Data"  ,"i"     ,&h4,offsetof(Data,d),SD_BUS_VTABLE_PROPERTY_CONST),
-  // SD_BUS_PROPERTY("Data"  ,"i"     ,NULL,offsetof(Data,d),SD_BUS_VTABLE_PROPERTY_CONST),
-  SD_BUS_VTABLE_END
-};
-
 void sigint_ignore();
 void quit(const int garbage){
   sigint_ignore();
@@ -157,7 +147,15 @@ int main(){
     NULL,
     "/net/poettering/Calculator", // Path-to-object
     SERVICE,  // Interface
-    vtable,
+    (sd_bus_vtable[]){
+      SD_BUS_VTABLE_START(0),
+      SD_BUS_METHOD("Multiply","xx","x",&h3_method_multiply ,SD_BUS_VTABLE_UNPRIVILEGED),
+      SD_BUS_METHOD("Divide"  ,"xx","x",&h3_method_divide   ,SD_BUS_VTABLE_UNPRIVILEGED),
+      // https://github.com/systemd/systemd/blob/90e74a66e663f1776457d599cb7d5ce44785a56c/src/core/dbus-job.c#L137
+      SD_BUS_PROPERTY("Data"  ,"i"     ,&h4,offsetof(Data,d),SD_BUS_VTABLE_PROPERTY_CONST),
+      // SD_BUS_PROPERTY("Data"  ,"i"     ,NULL,offsetof(Data,d),SD_BUS_VTABLE_PROPERTY_CONST),
+      SD_BUS_VTABLE_END
+    },
     &data
   );
   if(r<0){
