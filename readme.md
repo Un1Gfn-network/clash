@@ -30,6 +30,12 @@ $BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.fr
 unset -v BUSCTL
 ```
 
+Clean-up Variable Attribute - sd_event(3)
+
+```C
+__attribute__((cleanup(sd_event_unrefp))) sd_event *event = NULL;
+```
+
 ---
 
 [SO answer ioctl/netlink interface up/down](https://stackoverflow.com/a/63950398)

@@ -1,12 +1,13 @@
 #include <assert.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-// #include <stdint.h>
 #include <systemd/sd-bus.h>
-#include <stddef.h>
-#include <stdbool.h>
-#include <signal.h>
+#include <systemd/sd-event.h>
+#include <unistd.h>
 
 #define SERVICE "net.poettering.Calculator"
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
@@ -20,6 +21,7 @@ typedef struct {
 // https://stackoverflow.com/q/43414858/what-is-a-slot-in-sd-bus-c-language
 // sd_bus_slot *slot=NULL;
 sd_bus *bus=NULL;
+sd_event *ev=NULL;
 
 int h1(sd_bus_message *m,void *userdata,sd_bus_error *e){
   assert(!sd_bus_error_is_set(e));
@@ -100,8 +102,10 @@ void quit(const int garbage){
   sigint_ignore();
   assert(garbage==SIGINT);
   // sd_bus_slot_unref(slot);
-  // sd_bus_detach_event
-  // sd_event_unref
+  assert(0<=sd_bus_detach_event(bus));
+  assert(NULL==sd_event_unref(ev));
+  assert(NULL==sd_event_unref(ev));
+  ev=NULL;
   assert(0<=sd_bus_release_name(bus,SERVICE));
   assert(NULL==sd_bus_flush_close_unref(bus));
   bus=NULL;
@@ -123,7 +127,7 @@ void sigint_ignore(){
   assert(oldact.sa_handler==&quit||oldact.sa_handler==SIG_IGN||oldact.sa_handler==SIG_DFL);
 }
 
-void sigint_allow(){
+void sigint_quit(){
   struct sigaction oldact={};
   assert(0==sigaction(SIGINT,&(struct sigaction){
     .sa_handler=&quit,
@@ -163,20 +167,25 @@ int main(){
 
   assert(0<=sd_bus_request_name(bus,SERVICE,0L));
 
-  // sd-event(3)
-  // sd_event_default
-  // sd_bus_attach_event
+  assert(0<=sd_event_default(&ev));
+  assert(sd_bus_get_close_on_exit(bus));
+  assert(0<=sd_bus_set_close_on_exit(bus,false));
+  assert(0<=sd_bus_attach_event(bus,ev,SD_EVENT_PRIORITY_NORMAL));
 
-  for(;;){
-    const int r=sd_bus_process(bus,NULL);
-    if(r==0){
-      sigint_allow();
-      assert(1==sd_bus_wait(bus,UINT64_MAX));
-      sigint_ignore();
-    }else{
-      assert(r==1);
-    }
-  }
+  sigint_quit();
+  sd_event_loop(ev);
+  // pause();
+
+  // for(;;){
+  //   const int r=sd_bus_process(bus,NULL);
+  //   if(r==0){
+  //     sigint_quit();
+  //     assert(1==sd_bus_wait(bus,UINT64_MAX));
+  //     sigint_ignore();
+  //   }else{
+  //     assert(r==1);
+  //   }
+  // }
 
   assert(false);
   return EXIT_FAILURE;
