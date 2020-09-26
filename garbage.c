@@ -34,3 +34,90 @@ eprintf("\n");
 eprintf("  %s <rixcloud|ssrcloud>\n",argv[0]);
 eprintf("\n");
 exit(1);
+
+static inline int local_port(){
+  buf_http_get("http://127.0.0.1:6170/configs");
+  json_tokener_reset(tok);
+  json_object *jobj=json_tokener_parse(buf);
+  assert(jobj);
+  assert(json_type_object==json_object_get_type(jobj));
+  const int port=get_field_int(jobj,"socks-port");
+  assert(port==1080);
+  assert(1==json_object_put(jobj));
+  jobj=NULL;
+  buf_drop();
+  return port;
+}
+
+static inline void assert_key_assert_val(const char *const k,const char *const v){
+  assert_token_type(YAML_KEY_TOKEN);
+  assert(0==scalarcmp(k));
+  assert_token_type(YAML_VALUE_TOKEN);
+  assert(0==scalarcmp(v));
+}
+
+static inline void yaml2json_resolv(const char *const yaml_key,const char *const json_key){
+  assert_token_type(YAML_KEY_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
+  DEL();
+  assert_token_type(YAML_VALUE_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  char *ip=resolv((const char*)(token.data.scalar.value));
+  assert(ip);
+  printf("IP=\"%s\"\n",ip);
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string(ip)
+  ));
+  DEL();
+  free(ip);
+  ip=NULL;
+}
+
+static inline void yaml2json(const char *const yaml_key,const char *const json_key){
+  assert_token_type(YAML_KEY_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
+  DEL();
+  assert_token_type(YAML_VALUE_TOKEN);
+  SCAN();
+  assert(token.type==YAML_SCALAR_TOKEN);
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string((const char*)(token.data.scalar.value))
+  ));
+  DEL();
+}
+
+static inline void dump(){
+  for(;;){
+    SCAN();
+    type();
+    assert(token.type!=YAML_NO_TOKEN);
+    DEL();
+  }
+}
+
+// Get from profile global "profile" instead
+char *json_load_server(){
+
+  json_object *j=json_object_from_file(SS_LOCAL_JSON);
+  // assert((SS_LOCAL_JSON" not found",j));
+  assert(j);
+  assert(json_type_object==json_object_get_type(j));
+
+  json_object *j2=json_object_object_get(j,"server");
+  assert(j2);
+  assert(json_type_string==json_object_get_type(j2));
+  char *s=strdup(json_object_get_string(j2));
+
+  assert(1==json_object_put(j));
+  return s;
+
+}

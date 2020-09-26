@@ -1,11 +1,12 @@
 #include <assert.h>
-#include <json.h>
-#include <stdbool.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <json.h>
+#include <shadowsocks.h>
 #include <yaml.h>
-#include <errno.h>
 
 #include "def.h"
 
@@ -17,12 +18,13 @@
 static yaml_parser_t parser={};
 static yaml_token_t token={};
 
-static json_object *root=NULL;
+// shadowsocks.c
+extern profile_t profile;
 
 // resolv.c
-extern char *resolv(const char *);
+extern char *resolv(const char *domain);
 
-void type(){
+static inline void type(){
   switch(token.type){
     case YAML_NO_TOKEN:eprintf("YAML_NO_TOKEN\n");break;
     case YAML_STREAM_START_TOKEN:eprintf("YAML_STREAM_START_TOKEN\n");break;
@@ -50,20 +52,11 @@ void type(){
   }
 }
 
-static inline void dump(){
-  for(;;){
-    SCAN();
-    type();
-    assert(token.type!=YAML_NO_TOKEN);
-    DEL();
-  }
-}
-
 static inline void assert_token_type(yaml_token_type_t tt){
   SCAN();
   if(token.type!=tt){
     type();
-    assert(false);
+    assert(0);
   }
   DEL();
 }
@@ -73,7 +66,7 @@ static inline int scalarcmp(const char *const s){
   assert(token.type==YAML_SCALAR_TOKEN);
   /*if(token.type!=YAML_SCALAR_TOKEN){
     type();
-    assert(false);
+    assert(0);
     // dump();
   }*/
   const int ret=strcmp((const char*)(token.data.scalar.value),s);
@@ -95,67 +88,63 @@ static inline void assert_key_ignore_val(const char *const k){
   assert_token_type(YAML_SCALAR_TOKEN);
 }
 
-static inline void assert_key_assert_val(const char *const k,const char *const v){
+static inline char *assert_key_get_val(const char *const k){
   assert_token_type(YAML_KEY_TOKEN);
   assert(0==scalarcmp(k));
   assert_token_type(YAML_VALUE_TOKEN);
-  assert(0==scalarcmp(v));
-}
-
-static inline void yaml2json_resolv(const char *const yaml_key,const char *const json_key){
-  assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
-  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
+  char *ret=strdup((const char*)(token.data.scalar.value));
   DEL();
-  assert_token_type(YAML_VALUE_TOKEN);
-  SCAN();
-  assert(token.type==YAML_SCALAR_TOKEN);
-  char *ip=resolv((const char*)(token.data.scalar.value));
-  assert(ip);
-  printf("IP=\"%s\"\n",ip);
-  assert(0==json_object_object_add(
-    root,
-    json_key,
-    json_object_new_string(ip)
-  ));
-  DEL();
-  free(ip);
-  ip=NULL;
+  return ret;
 }
 
-static inline void yaml2json(const char *const yaml_key,const char *const json_key){
-  assert_token_type(YAML_KEY_TOKEN);
-  SCAN();
-  assert(token.type==YAML_SCALAR_TOKEN);
-  assert(0==strcmp((const char*)(token.data.scalar.value),yaml_key));
-  DEL();
-  assert_token_type(YAML_VALUE_TOKEN);
-  SCAN();
-  assert(token.type==YAML_SCALAR_TOKEN);
-  assert(0==json_object_object_add(
-    root,
-    json_key,
-    json_object_new_string((const char*)(token.data.scalar.value))
-  ));
-  DEL();
+void clear_profile(){
+  #define S0 (profile.remote_host)
+  #define S1 (profile.local_addr)
+  #define S2 (profile.method)
+  #define S3 (profile.password)
+  #define I0 (profile.remote_port)
+  #define I1 (profile.local_port)
+  if(S0){
+    assert(
+      strlen(S0)&&
+      S1&&strlen(S1)&&
+      S2&&strlen(S2)&&
+      S3&&strlen(S3)&&
+      (profile.remote_port>=1)&&(profile.local_port>=1)
+    );
+    free(S0);free(S1);free(S2);free(S3);
+    S0=NULL;S1=NULL;S2=NULL;S3=NULL;
+    I0=0;I1=0;
+  }else{
+    assert(
+      (!profile.remote_host)&&
+      (!profile.local_addr)&&
+      (!profile.method)&&
+      (!profile.password)&&
+      (profile.remote_port==0)&&(profile.local_port==0)
+    );
+  }
+  // https://stackoverflow.com/q/1493936#comment1346424_1493988
+  const unsigned char *const p=(const unsigned char*)(&profile);
+  assert(p[0]==0);
+  assert(0==memcmp(p,p+1,sizeof(profile_t)-1));
+  #undef S0
+  #undef S1
+  #undef S2
+  #undef S3
+  #undef I0
+  #undef I1
 }
 
-static inline void appendjson(const char *const json_key,const char *const v){
-  assert(0==json_object_object_add(
-    root,
-    json_key,
-    json_object_new_string(v)
-  ));
-}
-
-void write_json(const char *const filename,const char *const s){
+void yaml2profile(const char *const from_yaml,const char *const server_title){
 
   // Init
   yaml_parser_initialize(&parser);
   yaml_parser_set_encoding(&parser,YAML_UTF8_ENCODING);
-  assert(filename);
-  FILE *f=fopen(filename,"r");
+  assert(from_yaml);
+  FILE *f=fopen(from_yaml,"r");
   assert(f);
   yaml_parser_set_input_file(&parser,f);
   assert_token_type(YAML_STREAM_START_TOKEN);
@@ -190,14 +179,14 @@ void write_json(const char *const filename,const char *const s){
   else if(token.type==YAML_BLOCK_ENTRY_TOKEN){
     eprintf("not indented\n");
   }else{
-    assert(false);
+    assert(0);
   }
   DEL();*/
 
   assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
 
-  assert(s);
-  while(0!=assert_key_compare_val("name",s)){
+  assert(server_title);
+  while(0!=assert_key_compare_val("name",server_title)){
     // static int count=0;
     // eprintf("non-match %3d\n",++count);
     SCAN();
@@ -208,29 +197,75 @@ void write_json(const char *const filename,const char *const s){
     DEL();
     SCAN();
     if(token.type!=YAML_BLOCK_ENTRY_TOKEN){
-      eprintf("%s not found in %s\n",s,filename);
+      eprintf("%s not found in %s\n",server_title,from_yaml);
       eprintf("wrong provider?\n");
       eprintf("proxy-groups? (iteration support not implemented yet)\n");
-      assert(false);
+      assert(0);
     }
     DEL();
     assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
   }
 
-  assert(NULL!=(root=json_object_new_object()));
-
-  assert_key_assert_val("type","ss");
-  yaml2json_resolv("server","server");
-  yaml2json("port","server_port");
-  yaml2json("cipher","method");
-  yaml2json("password","password");
-  appendjson("local_address","127.0.0.1");
-  appendjson("local_port","1080");
-  appendjson("mode","tcp_and_udp");
-  assert_key_assert_val("udp","true");
+  clear_profile();
+  //
+  profile.local_port=LOCAL_PORT_I;
+  profile.local_addr=strdup(LOCAL_ADDR);
+  //
+  assert(0==assert_key_compare_val("type","ss"));
+  char *domain=assert_key_get_val("server");
+  char *remote_port=assert_key_get_val("port");
+  profile.method=assert_key_get_val("cipher");
+  profile.password=assert_key_get_val("password");
+  assert(0==assert_key_compare_val("udp","true"));
+  //
+  assert(domain);
+  assert(remote_port);
+  assert(NULL!=(profile.remote_host=resolv(domain)));
+  assert(1<=(profile.remote_port=atoi(remote_port)));
+  free(domain);
+  free(remote_port);
+  domain=NULL;
 
   assert_token_type(YAML_BLOCK_END_TOKEN);
 
+  yaml_parser_delete(&parser);
+  parser=(yaml_parser_t){};
+  fclose(f);
+  f=NULL;
+
+}
+
+static inline void appendjson(json_object *const root,const char *const json_key,const char *const v){
+  assert(0==json_object_object_add(
+    root,
+    json_key,
+    json_object_new_string(v)
+  ));
+}
+
+// {
+//   "server": "127.127.127.127",
+//   "server_port": "114514",
+//   "method": "chacha20-ietf-poly1305",
+//   "password": "ItuYNH19tMHEBnAuGSwn",
+//   "local_address": "127.0.0.1",
+//   "local_port": "1080",
+//   "mode": "tcp_and_udp"
+// }
+void profile2json(){
+  json_object *root=json_object_new_object();
+  assert(root);
+  char server_port[8]={};
+  char local_port[8]={};
+  sprintf(server_port,"%d",profile.remote_port);
+  sprintf(local_port ,"%d",profile.local_port);
+  appendjson(root,"server"       ,profile.remote_host);
+  appendjson(root,"server_port"  ,server_port);
+  appendjson(root,"method"       ,profile.method);
+  appendjson(root,"password"     ,profile.password);
+  appendjson(root,"local_address",profile.local_addr);
+  appendjson(root,"local_port"   ,local_port);
+  appendjson(root,"mode"         ,"tcp_and_udp");
   // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
   const int i=unlink(SS_LOCAL_JSON);
   if(i==-1){
@@ -243,11 +278,11 @@ void write_json(const char *const filename,const char *const s){
   printf("created \'%s\'\n",SS_LOCAL_JSON);
   assert(1==json_object_put(root));
   root=NULL;
-
-  yaml_parser_delete(&parser);
-  parser=(yaml_parser_t){};
+  // Newline
+  FILE *f=fopen(SS_LOCAL_JSON,"a");
+  assert(f);
+  fprintf(f,"\n");
   fclose(f);
   f=NULL;
-
 }
 

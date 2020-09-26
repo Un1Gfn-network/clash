@@ -18,10 +18,6 @@ CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-
 
 ###
 
-all:
-	$(MAKE) clean
-	$(MAKE) clash_tun.out route.out route_ioctl.out
-
 route:
 	$(MAKE) clean
 	$(MAKE) route.out route_ioctl.out
@@ -29,10 +25,9 @@ route:
 ###
 
 main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
-write_json.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
-clash_tun.out: LIBS:=$(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1)
-clash_tun.out:main.o write_json.o resolv.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
+conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
+clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o
+	$(CC) $(CFLAGS) -o $@ $^ $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev)
 
 ###
 
@@ -44,15 +39,15 @@ convert:convert.c
 
 ###
 
-jsrv.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c)
+conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c)
 route_ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
 route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c libbsd)
 route.out: LIBS:=$(shell pkg-config --libs json-c)
 
-route_ioctl.out:def.h jsrv.o route_ioctl.o
+route_ioctl.out:def.h conf.o route_ioctl.o
 	$(CC) $(CFLAGS) -o $@ $(filter-out $<,$^) $(LIBS)
 
-route.out:def.h jsrv.o route.c
+route.out:def.h conf.o route.c
 	$(CC) $(CFLAGS) -o $@ $(filter-out $<,$^) $(LIBS)
 
 ###
