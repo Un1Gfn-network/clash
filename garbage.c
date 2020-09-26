@@ -28,3 +28,9 @@ assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sendmsg(fd,&(struct msghdr){
   },
   .msg_iovlen = 1
 },0));
+
+
+eprintf("\n");
+eprintf("  %s <rixcloud|ssrcloud>\n",argv[0]);
+eprintf("\n");
+exit(1);

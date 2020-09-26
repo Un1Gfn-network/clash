@@ -155,18 +155,9 @@ static inline int local_port(){
 
 }
 
-int main(const int argc,const char **argv){
+void backup_json(const char *const provider){
 
-  if(
-    !( argc==2 && argv[1] && (strcmp(argv[1],"rixcloud")||strcmp(argv[1],"ssrcloud")) )
-  ){
-    eprintf("\n");
-    eprintf("  %s <rixcloud|ssrcloud>\n",argv[0]);
-    eprintf("\n");
-    exit(1);
-  }
-
-  assert(argv[1]);
+  assert(provider);
 
   // printf("%s\n",curl_version());
   assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
@@ -184,11 +175,11 @@ int main(const int argc,const char **argv){
 
   const char *l="/home/darren/.clash/";
   const char *r="/config.yaml";
-  const int total=strlen(l)+strlen(r)+strlen(argv[1])+1;
+  const int total=strlen(l)+strlen(r)+strlen(provider)+1;
   char filename[total];
   memset(filename,'\0',total);
   strcat(filename,l);
-  strcat(filename,argv[1]);
+  strcat(filename,provider);
   strcat(filename,r);
   // eprintf("%s\n",filename);
   write_json(filename,name);
@@ -199,6 +190,18 @@ int main(const int argc,const char **argv){
   json_tokener_free(tok);
   tok=NULL;
   curl_global_cleanup();
+
+}
+
+int main(const int argc,const char **argv){
+
+  assert(
+    argc==2 &&
+    argv[1] &&
+    (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
+  );
+
+  backup_json(argv[1]);
 
   return 0;
 

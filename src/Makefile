@@ -1,6 +1,8 @@
 ###
 
-default:bus
+default:
+	$(MAKE) clean
+	$(MAKE) clash_tun.out
 
 ###
 
@@ -26,10 +28,10 @@ route:
 
 ###
 
-clash_tun.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
+main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 write_json.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
 clash_tun.out: LIBS:=$(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1)
-clash_tun.out:clash_tun.o write_json.o resolv.o
+clash_tun.out:main.o write_json.o resolv.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 
 ###
