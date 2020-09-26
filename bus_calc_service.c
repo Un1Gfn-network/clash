@@ -172,7 +172,6 @@ int main(){
 
   sigint_quit();
   sd_event_loop(ev);
-  // pause();
 
   // for(;;){
   //   const int r=sd_bus_process(bus,NULL);

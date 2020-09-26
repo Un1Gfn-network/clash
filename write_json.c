@@ -226,7 +226,7 @@ void write_json(const char *const filename,const char *const s){
   yaml2json("password","password");
   appendjson("local_address","127.0.0.1");
   appendjson("local_port","1080");
-  appendjson("mode","tcp_only");
+  appendjson("mode","tcp_and_udp");
   assert_key_assert_val("udp","true");
 
   assert_token_type(YAML_BLOCK_END_TOKEN);

@@ -173,6 +173,8 @@ http://127.0.0.1:6170/proxies/GLOBAL
 extract
 
 ```bash
+make clean
+make clash_tun.out
 ./clash_tun.out rixcloud
 cat /tmp/ss-local.json
 ```
@@ -189,27 +191,31 @@ tun2socks
 ```bash
 su -
 # IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')" "8.8.8.8" "8.8.4.4")
-IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')")
-GW="192.168.1.1"
-echo ${IP[@]}
+# IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')")
+# echo ${IP[@]}
 
-systemctl stop systemd-resolved.service
-rm -fv /etc/resolv.conf
-ln -sfv /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-systemctl start systemd-resolved.service
+# resolvectl revert wlp2s0
+resolvectl llmnr      wlp2s0 no
+resolvectl mdns       wlp2s0 no
+resolvectl dnsovertls wlp2s0 no
+resolvectl dnssec     wlp2s0 no
+resolvectl dns        wlp2s0 ""
+resolvectl dns        wlp2s0 "127.127.127.127"
+resolvectl flush-caches
+resolvectl dns        wlp2s0 "8.8.8.8" "8.8.4.4"
 
 ip tuntap add dev tun0 mode tun
 ip link set tun0 up
 ip addr flush dev tun0
 ip addr add dev tun0 10.0.0.1/24
-for i in ${IP[@]}; do ip route add "$i" via "$GW"; done
-ip route del default via "$GW"
-ip route add default via 10.0.0.2
-ip route
+# for i in ${IP[@]}; do ip route add "$i" via "$GW"; done
+ip route add "$(jq </tmp/ss-local.json '.server' | tr -d '"')" via "192.168.1.1"
+ip route del default via "192.168.1.1"
+ip route add default via "10.0.0.2"
 
-iptables -F OUTPUT
-iptables -A OUTPUT -p udp -j REJECT
-iptables -S
+# iptables -F OUTPUT
+# iptables -A OUTPUT -p udp -j REJECT
+# iptables -S
 
 # badvpn-udpgw \
 #   --logger stdout \
@@ -219,9 +225,9 @@ badvpn-tun2socks \
   --tundev tun0 \
   --netif-ipaddr 10.0.0.2 \
   --netif-netmask 255.255.255.0 \
-  --socks-server-addr 127.0.0.1:1080
+  --socks-server-addr 127.0.0.1:1080 \
+  --socks5-udp
 # --udpgw-remote-server-addr 127.0.0.1:7300
-# --socks5-udp
 # --enable-udprelay
 ```
 
@@ -231,24 +237,29 @@ badvpn-tun2socks \
 killall badvpn-tun2socks
 killall ss-local
 
-iptables -F OUTPUT
-
-killall -SIGINT dhcpcd
-pgrep -a dhcpcd
-
 ip addr flush dev tun0
 ip link set tun0 down
 ip link del dev tun0
-ip route flush table main
-ip route
+ip route del "$(jq </tmp/ss-local.json '.server' | tr -d '"')" via "192.168.1.1"
+ip route del default via "10.0.0.2"
+ip route add default via "192.168.1.1" dev wlp2s0 proto dhcp scope global src 192.168.1.223 metric 303
 
-systemctl stop systemd-resolved.service
-rm -fv /etc/resolv.conf
-ln -sfv /run/dhcpcd/hook-state/resolv.conf/wlp2s0.dhcp /etc/resolv.conf
+resolvectl llmnr      wlp2s0 no
+resolvectl mdns       wlp2s0 no
+resolvectl dnsovertls wlp2s0 no
+resolvectl dnssec     wlp2s0 no
+resolvectl dns        wlp2s0 ""
+resolvectl dns        wlp2s0 "127.127.127.127"
+resolvectl flush-caches
+resolvectl dns        wlp2s0 "192.168.1.1"
 ```
+
+<!--
 
 dhcpcd
 
 ```bash
 dhcpcd.sh
 ```
+
+-->
