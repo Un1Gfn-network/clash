@@ -15,26 +15,13 @@
 #include <linux/if.h> // IFLA_OPER*
 extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 
-#include "def.h" // TUN WLO
+#include "./def.h" // TUN WLO
+#include "./netlink.h"
 
-// 11:22:33:44:55:66
-#define MAC_L (2*6+5)
+static int netlinkfd=-1;
 
-// #define SZ 16384
-#define SZ 8192
-
-#define eprintf(...) fprintf(stderr,__VA_ARGS__)
-
-// jsrv.c
-char *json_load_server();
-
-int netlinkfd=-1;
-
-char recvbuf[SZ]={};
-int len=0;
-
-char *server=NULL;
-char gw[INET_ADDRSTRLEN]={};
+static char recvbuf[SZ]={};
+static int len=0;
 
 typedef struct {
   bool caught;
@@ -47,7 +34,7 @@ typedef struct {
   struct ifinfomsg ifi;
 } Req_link;
 
-void init(){
+void netlink_init(){
   netlinkfd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
   assert(netlinkfd==3);
   assert(0==bind(netlinkfd,(struct sockaddr*)(&(struct sockaddr_nl){
@@ -58,18 +45,17 @@ void init(){
   }),sizeof(struct sockaddr_nl)));
 }
 
-void end(){
-  bzero(gw,INET_ADDRSTRLEN);
+void netlink_end(){
   assert(0==close(netlinkfd));
   netlinkfd=-1;
 }
 
-void clearbuf(){
+static void clearbuf(){
   bzero(recvbuf,SZ);
   len=0;
 }
 
-void receive(){
+static void receive(){
   for(char *p=recvbuf;;){
     const int seglen=recv(netlinkfd,p,sizeof(recvbuf)-len,0);
     assert(seglen>=1);
@@ -81,32 +67,17 @@ void receive(){
   }
 }
 
-/*void poll(){
-  const struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
-  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
-    switch(nh->nlmsg_type){
-      case NLMSG_NOOP:printf("NLMSG_NOOP ");break;
-      case NLMSG_ERROR:printf("NLMSG_ERROR ");break;
-      case NLMSG_DONE:printf("NLMSG_DONE ");break;
-      case RTM_NEWROUTE:printf("RTM_NEWROUTE ");break;
-      case RTM_NEWLINK:printf("RTM_NEWLINK ");break;
-      default:assert(false);
-    }
-    printf("\n");
-  }
-}*/
-
-void ack(){
+static void ack(){
   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
   // assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
   const int e=((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error;
   if(e!=0){
-    eprintf("%d %s\n",e,strerror(e));
+    printf("%d %s\n",e,strerror(e));
     assert(false);
   }
 }
 
-void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void *const data){
+static void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void *const data){
 
   #define NEWLEN(x) (NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(RTA_LENGTH(x)))
   #define FILL(x) {assert(NEWLEN(x)<=maxlen);rta->rta_type=type;rta->rta_len=RTA_LENGTH(x);}
@@ -160,11 +131,7 @@ void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void
 
 }
 
-#define add_route(dev,dst,via) route(true,false,dev,dst,via)
-#define del_route(dev,dst,via) route(false,false,dev,dst,via)
-#define add_gateway(dev,via) route(true,true,dev,NULL,via)
-#define del_gateway(dev,via) route(false,true,dev,NULL,via)
-void route(const bool add,const bool gw,const char *const dev,const char *const dst,const char *const via){
+void netlink_route(const bool add,const bool gw,const char *const dev,const char *const dst,const char *const via){
 
   assert(dev&&strlen(dev));
   const int oif=if_nametoindex(dev);
@@ -217,7 +184,7 @@ void route(const bool add,const bool gw,const char *const dev,const char *const 
 
 }
 
-void ask_route(){
+static void ask_route(){
 
   // RTM_GETROUTE only
   typedef struct {
@@ -249,21 +216,21 @@ void ask_route(){
   },sizeof(Req),0));
 }
 
-void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
+static void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
 }
 
-void steal_flag_32(unsigned *const flags,const unsigned f,const char *const s){
+static void steal_flag_32(unsigned *const flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
 }
 
-void print_route(){
+/*void netlink_print_route(){
 
   ask_route();
   receive();
@@ -353,15 +320,9 @@ void print_route(){
 
   clearbuf();
 
-}
+}*/
 
-void external(){
-  printf("Terminate? ");
-  fflush(stdout);
-  while(getchar()!='\n'){}
-}
-
-void get_gateway(char *const s){
+void netlink_get_gateway(char *const s){
 
   ask_route();
   receive();
@@ -435,24 +396,13 @@ void get_gateway(char *const s){
 
 }
 
-/*void pos(const void *const p){
-  printf("%ld ",(char*)p-recvbuf);
-}*/
-
-void catch(V32 *const m,const unsigned v){
+static void catch(V32 *const m,const unsigned v){
   assert(!(m->caught));
   m->caught=true;
   m->v=v;
 }
 
-/*void bytes(const void *const p,const int n){
-  printf("[ ");
-  for(int i=0;i<n;++i)
-    printf("0x%02X ",*((unsigned char*)p+i));
-  printf("] ");
-}*/
-
-void mac_colon(const void *const p,char *const s){
+static void mac_colon(const void *const p,char *const s){
   const unsigned char *const h=p;
   sprintf(s,"%02x:%02x:%02x:%02x:%02x:%02x",h[0],h[1],h[2],h[3],h[4],h[5]);
   // int l=0;
@@ -464,7 +414,7 @@ void mac_colon(const void *const p,char *const s){
   // assert(l==MAC_L);
 }
 
-void print_link(){
+/*void netlink_print_link(){
 
   assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
@@ -674,7 +624,7 @@ void print_link(){
 
   clearbuf();
 
-}
+}*/
 
 // RTM_NEWLINK/RTM_DELLINK only
 typedef struct {
@@ -683,41 +633,7 @@ typedef struct {
   char attrbuf[SZ];
 } Req_chlink;
 
-// Fail
-/*void tun_create(const char *const dev){
-
-  assert(0==getuid());
-  assert(dev);
-
-  Req_chlink req={
-    .nh={
-      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
-      .nlmsg_type=RTM_NEWLINK,
-      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE,
-      .nlmsg_seq=0,
-      .nlmsg_pid=getpid()
-    },
-    .ifi={
-      .ifi_family=AF_UNSPEC,
-      .ifi_type=ARPHRD_NONE,
-      .ifi_index=0, // ?
-      .ifi_flags=IFF_POINTOPOINT|IFF_NOARP|IFF_MULTICAST,
-      .ifi_change=0xFFFFFFFF,
-    },
-    .attrbuf={}
-  };
-
-  attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
-  // attr(&req.nh,sizeof(Req_chlink),IFLA_LINKMODE,IF_LINK_MODE_DEFAULT);
-
-  assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0));
-  receive();
-  ack();
-  clearbuf();
-
-}*/
-
-void del_link(const char *const dev){
+void netlink_del_link(const char *const dev){
 
   assert(0==getuid());
   assert(dev);
@@ -749,15 +665,7 @@ void del_link(const char *const dev){
 
 }
 
-void cidr_mask(unsigned prefixlen,struct in_addr *sin_addr_p){
-  assert(prefixlen<=32);
-  unsigned host=0;
-  for(;prefixlen>0;--prefixlen)
-    host|=((1<<(32U-prefixlen))); // ((1<<31)>>(prefixlen-1));
-  sin_addr_p->s_addr=htonl(host);
-}
-
-void print_addr(){
+/*void netlink_print_addr(){
 
   typedef struct {
     struct nlmsghdr nh;
@@ -876,9 +784,9 @@ void print_addr(){
 
   clearbuf();
 
-}
+}*/
 
-void tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
+/*void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
   
   assert(0==getuid());
   assert(prefixlen<=32);
@@ -923,11 +831,9 @@ void tun_addr(const char *const dev,const char *const ipv4,const unsigned char p
   ack();
   clearbuf();
 
-}
+}*/
 
-#define up(D) flags(true,D)
-#define down(D) flags(false,D) // Can change qdisc from fq_codel to noop?
-void flags(const bool up,const char *const dev){
+/*void netlink_flags(const bool up,const char *const dev){
 
   assert(0==getuid());
   assert(dev&&strlen(dev));
@@ -956,57 +862,25 @@ void flags(const bool up,const char *const dev){
   ack();
   clearbuf();
 
-}
+}*/
 
-void set(){
-
-  // // tun_create(TUN); // Fail
-  // // getchar();
-  // tun_addr(TUN,"10.0.0.1",24);
-  // up(TUN);
-
-  // get_gateway(gw);
-  // del_gateway(WLO,gw);
-  // add_gateway(TUN,"10.0.0.2");
-
-  // server=json_load_server();
-  // assert(server);
-  // printf("%s\n",server);
-  // add_route(WLO,server,gw);
-
-}
-
-void reset(){
-
-  // del_route(WLO,server,gw);
-  // free(server);
-  // server=NULL;
-
-  // del_gateway(TUN,"10.0.0.2");
-  // add_gateway(WLO,gw);
-
-  // down(TUN);
-  del_link(TUN);
-
-}
-
-int main(){
+/*int main(){
 
   init();
-  // print_addr();
-  // print_link();
-  // print_route();
+  print_addr();
+  print_link();
+  print_route();
 
-  // set();
-  // print_addr();
-  // print_link();
-  // print_route();
+  set();
+  print_addr();
+  print_link();
+  print_route();
 
-  // external();
+  external();
   reset();
-  // print_link();
-  // print_route();
+  print_link();
+  print_route();
 
   end();
 
-}
+}*/

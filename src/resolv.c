@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define eprintf(...) fprintf(stderr,__VA_ARGS__)
+#include "./resolv.h"
 
 char *resolv(const char *domain){
 
@@ -17,8 +17,9 @@ char *resolv(const char *domain){
   };
 
   const int errcode=getaddrinfo(domain,NULL,&hints,&res);
-  if(errcode!=0){ 
-    eprintf("%s\n",gai_strerror(errcode));
+  if(errcode!=0){
+    printf("%s\n",gai_strerror(errcode));
+    assert(0);
   }
 
   const struct addrinfo *it=res;

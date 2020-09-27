@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "./curl.h"
+
 static char *buf=NULL;
 static size_t sz=0;
 

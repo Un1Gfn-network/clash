@@ -18,54 +18,13 @@ CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-
 
 ###
 
-route:
-	$(MAKE) clean
-	$(MAKE) route.out route_ioctl.out
-
-###
-
 main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
-clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o
-	$(CC) $(CFLAGS) -o $@ $^ $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev)
+netlink.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c)
+ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c libbsd)
 
-###
-
-CONVERT::=/home/darren/.clash/bin/convert.out
-convert:convert.c
-	@rm -fv $(CONVERT)
-	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(CONVERT) $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
-	ls -lh $(CONVERT)
-
-###
-
-conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags json-c)
-route_ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
-route_ioctl.out: LIBS:=$(shell pkg-config --libs json-c libbsd)
-route.out: LIBS:=$(shell pkg-config --libs json-c)
-
-route_ioctl.out:def.h conf.o route_ioctl.o
-	$(CC) $(CFLAGS) -o $@ $(filter-out $<,$^) $(LIBS)
-
-route.out:def.h conf.o route.c
-	$(CC) $(CFLAGS) -o $@ $(filter-out $<,$^) $(LIBS)
-
-###
-
-# test.out:test.c
-# 	$(CC) $(CFLAGS) -o $@ $<
-
-###
-
-# add:
-# 	$(MAKE) clean
-# 	$(MAKE) add-server.out add-client.out
-
-# add-%.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags dbus-1)
-# add-%.out: LIBS:=$(shell pkg-config --libs dbus-1)
-
-# add-%.out: add-%.o
-# 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o netlink.o # ioctl.o
+	$(CC) $(CFLAGS) -o $@ $^ $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd)
 
 ###
 
@@ -92,3 +51,25 @@ service:
 bus_calc_service.out:
 bus_%.out: bus_%.c
 	$(CC) $(CFLAGS) $(shell pkg-config --cflags libsystemd) -o $@ $< $(shell pkg-config --libs libsystemd)
+
+###
+
+CONVERT::=/home/darren/.clash/bin/convert.out
+convert:convert.c
+	@rm -fv $(CONVERT)
+	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(CONVERT) $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
+	ls -lh $(CONVERT)
+
+###
+
+# add:
+# 	$(MAKE) clean
+# 	$(MAKE) add-server.out add-client.out
+
+# add-%.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags dbus-1)
+# add-%.out: LIBS:=$(shell pkg-config --libs dbus-1)
+
+# add-%.out: add-%.o
+# 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+###

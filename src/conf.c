@@ -8,7 +8,10 @@
 #include <shadowsocks.h>
 #include <yaml.h>
 
-#include "def.h"
+#include "./def.h"
+#include "./shadowsocks.h"
+#include "./resolv.h"
+#include "./conf.h"
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))
@@ -17,12 +20,6 @@
 
 static yaml_parser_t parser={};
 static yaml_token_t token={};
-
-// shadowsocks.c
-extern profile_t profile;
-
-// resolv.c
-extern char *resolv(const char *domain);
 
 static inline void type(){
   switch(token.type){

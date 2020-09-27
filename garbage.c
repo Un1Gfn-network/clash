@@ -121,3 +121,72 @@ char *json_load_server(){
   return s;
 
 }
+
+void poll(){
+  const struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
+  for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
+    switch(nh->nlmsg_type){
+      case NLMSG_NOOP:printf("NLMSG_NOOP ");break;
+      case NLMSG_ERROR:printf("NLMSG_ERROR ");break;
+      case NLMSG_DONE:printf("NLMSG_DONE ");break;
+      case RTM_NEWROUTE:printf("RTM_NEWROUTE ");break;
+      case RTM_NEWLINK:printf("RTM_NEWLINK ");break;
+      default:assert(false);
+    }
+    printf("\n");
+  }
+}
+
+void external(){
+  printf("Terminate? ");
+  fflush(stdout);
+  while(getchar()!='\n'){}
+}
+
+// Fail
+void netlink_tun_create(const char *const dev){
+  assert(0==getuid());
+  assert(dev);
+  Req_chlink req={
+    .nh={
+      .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+      .nlmsg_type=RTM_NEWLINK,
+      .nlmsg_flags=NLM_F_REQUEST|NLM_F_ACK|NLM_F_EXCL|NLM_F_CREATE,
+      .nlmsg_seq=0,
+      .nlmsg_pid=getpid()
+    },
+    .ifi={
+      .ifi_family=AF_UNSPEC,
+      .ifi_type=ARPHRD_NONE,
+      .ifi_index=0, // ?
+      .ifi_flags=IFF_POINTOPOINT|IFF_NOARP|IFF_MULTICAST,
+      .ifi_change=0xFFFFFFFF,
+    },
+    .attrbuf={}
+  };
+  attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
+  // attr(&req.nh,sizeof(Req_chlink),IFLA_LINKMODE,IF_LINK_MODE_DEFAULT);
+  assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0));
+  receive();
+  ack();
+  clearbuf();
+}
+
+static void cidr_mask(unsigned prefixlen,struct in_addr *sin_addr_p){
+  assert(prefixlen<=32);
+  unsigned host=0;
+  for(;prefixlen>0;--prefixlen)
+    host|=((1<<(32U-prefixlen))); // ((1<<31)>>(prefixlen-1));
+  sin_addr_p->s_addr=htonl(host);
+}
+
+void pos(const void *const p){
+  printf("%ld ",(char*)p-recvbuf);
+}
+
+void bytes(const void *const p,const int n){
+  printf("[ ");
+  for(int i=0;i<n;++i)
+    printf("0x%02X ",*((unsigned char*)p+i));
+  printf("] ");
+}

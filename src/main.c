@@ -5,15 +5,15 @@
 // #include <curl/curl.h>
 // #include <stdbool.h>
 // #include <stdlib.h>
+#include <netinet/in.h> // INET_ADDRSTRLEN
 
-// curl.c
-const char *curl_get(const char *const url);
-void curl_drop();
+#include "./curl.h"
+#include "./conf.h"
+#include "./netlink.h"
+#include "./def.h"
+#include "./shadowsocks.h"
 
-// conf.c
-void clear_profile();
-void yaml2profile(const char *const from_yaml,const char *const server_title);
-void profile2json();
+char gw[INET_ADDRSTRLEN]={};
 
 static inline void assert_field(const json_object *const j,const char *const k,const char *const v){
   json_object *p=NULL;
@@ -95,6 +95,33 @@ static inline char *provider2path(const char *const provider){
   return ret;
 }
 
+void set(){
+
+  // tun_create(TUN); // Fail
+  // tun_addr(TUN,"10.0.0.1",24);
+  // up(TUN);
+
+  netlink_get_gateway(gw);
+  netlink_del_gateway(WLO,gw);
+  // netlink_add_gateway(TUN,"10.0.0.2");
+
+  assert(profile.remote_host);
+  netlink_add_route(WLO,profile.remote_host,gw);
+
+}
+
+void reset(){
+
+  netlink_del_route(WLO,profile.remote_host,gw);
+
+  // netlink_del_gateway(TUN,"10.0.0.2");
+  netlink_add_gateway(WLO,gw);
+
+  // down(TUN);
+  // del_link(TUN);
+
+}
+
 int main(const int argc,const char **argv){
 
   assert(
@@ -103,19 +130,27 @@ int main(const int argc,const char **argv){
     (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
   );
 
-  char *server_title=current_server_title();
-  printf("%s\n",server_title);
   char *yaml_path=provider2path(argv[1]);
-
+  char *server_title=current_server_title();
   yaml2profile(yaml_path,server_title);
-
   profile2json();
-
-  clear_profile();
   free(server_title);
   free(yaml_path);
   server_title=NULL;
   yaml_path=NULL;
+
+  netlink_init();
+  set();
+
+  printf("? ");
+  fflush(stdout);
+  char s[SZ]={};
+  assert(s==fgets(s,SZ,stdin));
+
+  reset();
+  netlink_end();
+
+  clear_profile();
 
   return 0;
 

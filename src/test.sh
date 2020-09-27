@@ -1,16 +1,18 @@
-#!/bin/bash -x
+#!/bin/bash -e
 
 function err {
-  echo "error on line $1: '$2'"
-  echo "quit"
-  /bin/false # (2/2) Exit if 'set -e'
+  R="$?"
+  if [ "$R" -ne 0 ]; then
+    echo "err @ '$2'"
+    exit 2
+  fi
+  echo "OK"
+  exit 0
 }
-
-trap 'err $LINENO "$BASH_COMMAND"' ERR # (1/2) Exit if 'set -e'
-
+trap 'err "${BASH_SOURCE[0]}" "$BASH_COMMAND"' EXIT
 trap 'exit 1' SIGINT
 
-test $(whoami) == "root"
+test "$(whoami)" = "root"
 
 set +e
 ip a f tunT
@@ -23,7 +25,7 @@ ip r a 192.168.1.0/24 dev wlp2s0 proto dhcp scope link src 192.168.1.223 metric 
 ip r a default via 192.168.1.1 dev wlp2s0 proto dhcp src 192.168.1.223 metric 303
 
 sudo -u darren make
-sudo -u darren ./clash_tun.out rixcloud
 
-valgrind ./route_ioctl.out
-valgrind ./route.out
+./clash_tun.out rixcloud
+# valgrind ./route_ioctl.out
+# valgrind ./route.out
