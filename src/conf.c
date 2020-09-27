@@ -1,5 +1,8 @@
 #include <assert.h>
 #include <errno.h>
+#include <pwd.h>
+#include <regex.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,10 +11,10 @@
 #include <shadowsocks.h>
 #include <yaml.h>
 
-#include "./def.h"
-#include "./shadowsocks.h"
-#include "./resolv.h"
 #include "./conf.h"
+#include "./def.h"
+#include "./resolv.h"
+#include "./shadowsocks.h"
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))
@@ -103,24 +106,21 @@ void clear_profile(){
   #define S3 (profile.password)
   #define I0 (profile.remote_port)
   #define I1 (profile.local_port)
+  #define I2 (profile.fast_open)
+  #define I3 (profile.mode)
   if(S0){
     assert(
-      strlen(S0)&&
-      S1&&strlen(S1)&&
-      S2&&strlen(S2)&&
-      S3&&strlen(S3)&&
-      (profile.remote_port>=1)&&(profile.local_port>=1)
+      S1&&S2&&S3&&
+      strlen(S0)&&strlen(S1)&&strlen(S2)&&strlen(S3)&&
+      (I0>=1)&&(I1>=1)&&(I2>=1)&&(I3>=1)
     );
     free(S0);free(S1);free(S2);free(S3);
     S0=NULL;S1=NULL;S2=NULL;S3=NULL;
-    I0=0;I1=0;
+    I0=0;I1=0;I2=0;I3=0;
   }else{
     assert(
-      (!profile.remote_host)&&
-      (!profile.local_addr)&&
-      (!profile.method)&&
-      (!profile.password)&&
-      (profile.remote_port==0)&&(profile.local_port==0)
+      (!S0)&&(!S1)&&(!S2)&&(!S3)&&
+      (I0==0)&&(I1==0)&&(I2==0)&&(I3==0)
     );
   }
   // https://stackoverflow.com/q/1493936#comment1346424_1493988
@@ -133,6 +133,8 @@ void clear_profile(){
   #undef S3
   #undef I0
   #undef I1
+  #undef I2
+  #undef I3
 }
 
 void yaml2profile(const char *const from_yaml,const char *const server_title){
@@ -194,9 +196,9 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
     DEL();
     SCAN();
     if(token.type!=YAML_BLOCK_ENTRY_TOKEN){
-      eprintf("%s not found in %s\n",server_title,from_yaml);
+      eprintf("\'%s\' not found in %s\n",server_title,from_yaml);
       eprintf("wrong provider?\n");
-      eprintf("proxy-groups? (iteration support not implemented yet)\n");
+      eprintf("proxy-groups? (iteration not yet implemented)\n");
       assert(0);
     }
     DEL();
@@ -207,6 +209,8 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
   //
   profile.local_port=LOCAL_PORT_I;
   profile.local_addr=strdup(LOCAL_ADDR);
+  profile.fast_open=true;
+  profile.mode=true;
   //
   assert(0==assert_key_compare_val("type","ss"));
   char *domain=assert_key_get_val("server");
@@ -232,24 +236,45 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
 
 }
 
-static inline void appendjson(json_object *const root,const char *const json_key,const char *const v){
+static inline void match(const char *const string,const char *const regex){
+  // printf("%s\n",regex);
+  regex_t preg={};
+  assert(0==regcomp(&preg,regex,REG_EXTENDED));
+  regmatch_t pmatch={};
+  assert(0==regexec(&preg,string,1,&pmatch,0));
+  // printf("#%d (%d,%d)\n",i,pmatch[i].rm_so,pmatch[i].rm_eo);
+  assert(
+    pmatch.rm_so==0&&
+    pmatch.rm_eo==(int)strlen(string)
+  );
+  regfree(&preg);
+}
+
+static inline void appendjson(json_object *const root,const char *const k,const char *const v){
+  match(k,"[0-9A-Za-z_]+");
+  match(v,"[0-9A-Za-z_.-]+");
+  // const int ql=strlen(v)+2+1;
+  // char vq[ql];
+  // memset(vq,'\"',ql);
+  // strcpy(vq+1,v);
   assert(0==json_object_object_add(
     root,
-    json_key,
-    json_object_new_string(v)
+    k,
+    json_object_new_string(v/*vq*/)
   ));
 }
 
 // {
 //   "server": "127.127.127.127",
 //   "server_port": "114514",
-//   "method": "chacha20-ietf-poly1305",
-//   "password": "ItuYNH19tMHEBnAuGSwn",
 //   "local_address": "127.0.0.1",
 //   "local_port": "1080",
+//   "password": "ItuYNH19tMHEBnAuGSwn",
+//   "method": "chacha20-ietf-poly1305",
+//   "fast_open": "true"
 //   "mode": "tcp_and_udp"
 // }
-void profile2json(){
+void profile2json(const char *const server_title){
   json_object *root=json_object_new_object();
   assert(root);
   char server_port[8]={};
@@ -258,11 +283,12 @@ void profile2json(){
   sprintf(local_port ,"%d",profile.local_port);
   appendjson(root,"server"       ,profile.remote_host);
   appendjson(root,"server_port"  ,server_port);
-  appendjson(root,"method"       ,profile.method);
-  appendjson(root,"password"     ,profile.password);
   appendjson(root,"local_address",profile.local_addr);
   appendjson(root,"local_port"   ,local_port);
-  appendjson(root,"mode"         ,"tcp_and_udp");
+  appendjson(root,"password"     ,profile.password);
+  appendjson(root,"method"       ,profile.method);
+  appendjson(root,"fast_open"    ,"true");assert(profile.fast_open);
+  appendjson(root,"mode"         ,"tcp_and_udp");assert(profile.mode);
   // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
   const int i=unlink(SS_LOCAL_JSON);
   if(i==-1){
@@ -271,7 +297,11 @@ void profile2json(){
     assert(i==0);
     printf("removed \'%s\'\n",SS_LOCAL_JSON);
   }
-  assert(0==json_object_to_file_ext(SS_LOCAL_JSON,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
+  assert(0==json_object_to_file_ext(
+    SS_LOCAL_JSON,
+    root,
+    JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED
+  ));
   printf("created \'%s\'\n",SS_LOCAL_JSON);
   assert(1==json_object_put(root));
   root=NULL;
@@ -279,7 +309,19 @@ void profile2json(){
   FILE *f=fopen(SS_LOCAL_JSON,"a");
   assert(f);
   fprintf(f,"\n");
-  fclose(f);
-  f=NULL;
+  if(server_title){
+    assert(strlen(server_title));
+    fprintf(f,"// %s\n",server_title);
+  }
+  fclose(f);f=NULL;
+  if(0==getuid()){
+    const struct passwd *const pw=getpwnam(USR);
+    assert(
+      pw->pw_uid==1000&&
+      pw->pw_gid==1000
+    );
+    assert(0==chown(SS_LOCAL_JSON,pw->pw_uid,pw->pw_gid));
+  }else{
+    assert(1000==getuid());
+  }
 }
-

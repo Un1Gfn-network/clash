@@ -14,3 +14,5 @@
 
 // #define SZ 16384
 #define SZ 8192
+
+#define USR "darren"

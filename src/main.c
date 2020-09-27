@@ -132,8 +132,9 @@ int main(const int argc,const char **argv){
 
   char *yaml_path=provider2path(argv[1]);
   char *server_title=current_server_title();
+  printf("\'%s\'\n",server_title);
   yaml2profile(yaml_path,server_title);
-  profile2json();
+  profile2json(server_title);
   free(server_title);
   free(yaml_path);
   server_title=NULL;

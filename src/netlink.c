@@ -216,19 +216,19 @@ static void ask_route(){
   },sizeof(Req),0));
 }
 
-static void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
+/*static void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
-}
+}*/
 
-static void steal_flag_32(unsigned *const flags,const unsigned f,const char *const s){
+/*static void steal_flag_32(unsigned *const flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
-}
+}*/
 
 /*void netlink_print_route(){
 
@@ -396,13 +396,13 @@ void netlink_get_gateway(char *const s){
 
 }
 
-static void catch(V32 *const m,const unsigned v){
+/*static void catch(V32 *const m,const unsigned v){
   assert(!(m->caught));
   m->caught=true;
   m->v=v;
-}
+}*/
 
-static void mac_colon(const void *const p,char *const s){
+/*static void mac_colon(const void *const p,char *const s){
   const unsigned char *const h=p;
   sprintf(s,"%02x:%02x:%02x:%02x:%02x:%02x",h[0],h[1],h[2],h[3],h[4],h[5]);
   // int l=0;
@@ -412,7 +412,7 @@ static void mac_colon(const void *const p,char *const s){
   // // for(int i=1;i<6;++i)
   // //   l+=sprintf(s+l,":%02x",*((unsigned char*)p+i));
   // assert(l==MAC_L);
-}
+}*/
 
 /*void netlink_print_link(){
 
