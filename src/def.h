@@ -16,3 +16,5 @@
 #define SZ 8192
 
 #define USR "darren"
+
+#define SS_LOG "/tmp/ss-local.log"

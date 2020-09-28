@@ -11,7 +11,7 @@ clean:
 
 CC::=gcc
 
-CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-errors=1
+CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -D_GNU_SOURCE -pthread # -fmax-errors=1
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $<
@@ -20,11 +20,11 @@ CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline # -fmax-
 
 main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
-netlink.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c)
-ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c libbsd)
+ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
+shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 
 clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o netlink.o util.o ioctl.o
-	$(CC) $(CFLAGS) -o $@ $^ $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd)
+	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd)
 
 ###
 
