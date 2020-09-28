@@ -2,16 +2,15 @@
 #include <json.h>
 #include <stdio.h>
 #include <string.h>
-// #include <curl/curl.h>
-// #include <stdbool.h>
-// #include <stdlib.h>
+
 #include <netinet/in.h> // INET_ADDRSTRLEN
 
-#include "./curl.h"
 #include "./conf.h"
-#include "./netlink.h"
+#include "./curl.h"
 #include "./def.h"
+#include "./netlink.h"
 #include "./shadowsocks.h"
+#include "./util.h"
 
 char gw[INET_ADDRSTRLEN]={};
 
@@ -123,6 +122,8 @@ void reset(){
 }
 
 int main(const int argc,const char **argv){
+
+  privilege_drop();
 
   assert(
     argc==2 &&

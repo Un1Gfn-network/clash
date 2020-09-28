@@ -145,7 +145,7 @@ void external(){
 
 // Fail
 void netlink_tun_create(const char *const dev){
-  assert(0==getuid());
+  privilege_escalate();
   assert(dev);
   Req_chlink req={
     .nh={
@@ -170,6 +170,7 @@ void netlink_tun_create(const char *const dev){
   receive();
   ack();
   clearbuf();
+  privilege_drop();
 }
 
 static void cidr_mask(unsigned prefixlen,struct in_addr *sin_addr_p){
@@ -189,4 +190,18 @@ void bytes(const void *const p,const int n){
   for(int i=0;i<n;++i)
     printf("0x%02X ",*((unsigned char*)p+i));
   printf("] ");
+}
+
+// Fail
+void tun_del(const char *const dev){
+  privilege_escalate();
+  assert(dev&&strlen(dev));
+  struct ifreq ifc={};
+  strncpy(ifc.ifr_name,dev,IFNAMSIZ);
+  int tunfd=open("/dev/net/tun",O_RDWR);
+  assert(tunfd>=3);
+  assert(0==ioctl(tunfd,TUNSETPERSIST,0));
+  close(tunfd);
+  tunfd=-1;
+  privilege_drop();
 }

@@ -23,7 +23,7 @@ conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
 netlink.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c)
 ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --libs json-c libbsd)
 
-clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o netlink.o # ioctl.o
+clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o netlink.o util.o # ioctl.o
 	$(CC) $(CFLAGS) -o $@ $^ $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd)
 
 ###

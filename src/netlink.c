@@ -17,6 +17,7 @@ extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 
 #include "./def.h" // TUN WLO
 #include "./netlink.h"
+#include "./util.h"
 
 static int netlinkfd=-1;
 
@@ -35,8 +36,7 @@ typedef struct {
 } Req_link;
 
 void netlink_init(){
-  netlinkfd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE);
-  assert(netlinkfd==3);
+  ESCALATED(assert(3<=(netlinkfd=socket(AF_NETLINK,SOCK_RAW,NETLINK_ROUTE))));
   assert(0==bind(netlinkfd,(struct sockaddr*)(&(struct sockaddr_nl){
     .nl_family=AF_NETLINK,
     .nl_pad=0,
@@ -46,8 +46,10 @@ void netlink_init(){
 }
 
 void netlink_end(){
+  // privilege_escalate();
   assert(0==close(netlinkfd));
   netlinkfd=-1;
+  // privilege_drop();
 }
 
 static void clearbuf(){
@@ -56,6 +58,7 @@ static void clearbuf(){
 }
 
 static void receive(){
+  privilege_escalate();
   for(char *p=recvbuf;;){
     const int seglen=recv(netlinkfd,p,sizeof(recvbuf)-len,0);
     assert(seglen>=1);
@@ -65,6 +68,7 @@ static void receive(){
       break;
     p+=seglen;
   }
+  privilege_drop();
 }
 
 static void ack(){
@@ -138,7 +142,6 @@ void netlink_route(const bool add,const bool gw,const char *const dev,const char
   assert(oif>=1);
   assert(gw?(!dst):(dst&&strlen(dst)));
   assert(via&&strlen(via));
-  assert(0==getuid());
 
   // RTM_DELROUTE/RTM_ADDROUTE only
   typedef struct {
@@ -177,7 +180,7 @@ void netlink_route(const bool add,const bool gw,const char *const dev,const char
   attr(&req.nh,sizeof(Req),RTA_GATEWAY,via);
   attr(&req.nh,sizeof(Req),RTA_OIF,&oif);
 
-  assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0));
+  ESCALATED(assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0)));
   receive();
   ack();
   clearbuf();
@@ -185,16 +188,14 @@ void netlink_route(const bool add,const bool gw,const char *const dev,const char
 }
 
 static void ask_route(){
-
   // RTM_GETROUTE only
   typedef struct {
     struct nlmsghdr nh;
     struct rtmsg rt;
   } Req;
-
   // rtnetlink(3)
   assert(NLMSG_LENGTH(sizeof(struct rtmsg))==sizeof(Req));
-  assert(sizeof(Req)==send(netlinkfd,&(Req){
+  ESCALATED(assert(sizeof(Req)==send(netlinkfd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct rtmsg)),
       .nlmsg_type=RTM_GETROUTE,
@@ -213,7 +214,7 @@ static void ask_route(){
       .rtm_type=RTN_UNSPEC,
       .rtm_flags=0
     }
-  },sizeof(Req),0));
+  },sizeof(Req),0)));
 }
 
 /*static void steal_flag_8(unsigned char *const flags,const unsigned char f,const char *const s){
@@ -416,7 +417,7 @@ void netlink_get_gateway(char *const s){
 
 /*void netlink_print_link(){
 
-  assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
+  ESCALATED(assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_GETLINK,
@@ -431,7 +432,7 @@ void netlink_get_gateway(char *const s){
       .ifi_flags=0,
       .ifi_change=0xFFFFFFFF,
     }
-  },sizeof(Req_link),0));
+  },sizeof(Req_link),0)));
 
   receive();
 
@@ -634,10 +635,7 @@ typedef struct {
 } Req_chlink;
 
 void netlink_del_link(const char *const dev){
-
-  assert(0==getuid());
   assert(dev);
-
   Req_chlink req={
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
@@ -655,25 +653,21 @@ void netlink_del_link(const char *const dev){
     },
     .attrbuf={}
   };
-
   attr(&req.nh,sizeof(Req_chlink),IFLA_IFNAME,dev);
-
-  assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0));
+  ESCALATED(assert(sizeof(Req_chlink)==send(netlinkfd,&req,sizeof(Req_chlink),0)));
   receive();
   ack();
   clearbuf();
-
 }
 
 /*void netlink_print_addr(){
-
   typedef struct {
     struct nlmsghdr nh;
     struct ifaddrmsg ifa;
   } Req;
-
   assert(NLMSG_LENGTH(sizeof(struct ifaddrmsg))==sizeof(Req));
-  assert(sizeof(Req)==send(netlinkfd,&(Req){
+
+  ESCALATED(assert(sizeof(Req)==send(netlinkfd,&(Req){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
       .nlmsg_type=RTM_GETADDR,
@@ -688,10 +682,9 @@ void netlink_del_link(const char *const dev){
       .ifa_scope=0,
       .ifa_index=0
     }
-  },sizeof(Req),0));
+  },sizeof(Req),0)));
 
   receive();
-
   printf("\n");
   struct nlmsghdr *nh=(struct nlmsghdr*)recvbuf;
   for(;NLMSG_OK(nh,len);nh=NLMSG_NEXT(nh,len)){
@@ -787,21 +780,17 @@ void netlink_del_link(const char *const dev){
 }*/
 
 /*void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
-  
-  assert(0==getuid());
   assert(prefixlen<=32);
   assert(ipv4&&strlen(ipv4));
   assert(dev&&strlen(dev));
   const unsigned index=if_nametoindex(dev);
   assert(index>0);
-
   // RTM_NEWADDR only
   typedef struct {
     struct nlmsghdr nh;
     struct ifaddrmsg ifa;
     char attrbuf[SZ];
   } Req;
-
   Req req={
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifaddrmsg)),
@@ -819,28 +808,23 @@ void netlink_del_link(const char *const dev){
     },
     .attrbuf={}
   };
-
   // attr(&req.nh,sizeof(Req),IFA_LABEL,dev);
   // attr(&req.nh,sizeof(Req),IFA_FLAGS,&(unsigned){IFA_F_PERMANENT});
   attr(&req.nh,sizeof(Req),IFA_ADDRESS,ipv4);
   attr(&req.nh,sizeof(Req),IFA_LOCAL,ipv4);
-
-  assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0));
-
+  ESCALATED(assert(sizeof(Req)==send(netlinkfd,&req,sizeof(Req),0)));
   receive();
   ack();
   clearbuf();
-
 }*/
 
 /*void netlink_flags(const bool up,const char *const dev){
 
-  assert(0==getuid());
   assert(dev&&strlen(dev));
   const unsigned index=if_nametoindex(dev);
   assert(index>=5);
 
-  assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
+  ESCALATED(assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
       .nlmsg_len=NLMSG_LENGTH(sizeof(struct ifinfomsg)),
       .nlmsg_type=RTM_NEWLINK,
@@ -856,7 +840,7 @@ void netlink_del_link(const char *const dev){
       // https://www.spinics.net/lists/netdev/msg598191.html
       .ifi_change=IFF_UP // 0xFFFFFFFF
     }
-  },sizeof(Req_link),0));
+  },sizeof(Req_link),0)));
 
   receive();
   ack();

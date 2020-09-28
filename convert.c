@@ -101,7 +101,7 @@ void emitter_begin(){
     "allow-lan","true",
     "mode","Global",
     "log-level","info",
-    "external-controller","127.0.0.1:6170",
+    "external-controller","127.0.0.1:7892", // yacd updated defaults
     // "external-controller","\'127.0.0.1:6170\'",
     "secret","",
     NULL

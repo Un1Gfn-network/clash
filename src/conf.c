@@ -1,11 +1,10 @@
 #include <assert.h>
 #include <errno.h>
-#include <pwd.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <unistd.h> // unlink
 
 #include <json.h>
 #include <shadowsocks.h>
@@ -314,14 +313,4 @@ void profile2json(const char *const server_title){
     fprintf(f,"// %s\n",server_title);
   }
   fclose(f);f=NULL;
-  if(0==getuid()){
-    const struct passwd *const pw=getpwnam(USR);
-    assert(
-      pw->pw_uid==1000&&
-      pw->pw_gid==1000
-    );
-    assert(0==chown(SS_LOCAL_JSON,pw->pw_uid,pw->pw_gid));
-  }else{
-    assert(1000==getuid());
-  }
 }
