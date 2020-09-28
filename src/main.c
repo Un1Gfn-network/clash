@@ -8,6 +8,7 @@
 #include "./conf.h"
 #include "./curl.h"
 #include "./def.h"
+#include "./ioctl.h"
 #include "./netlink.h"
 #include "./shadowsocks.h"
 #include "./util.h"
@@ -96,15 +97,14 @@ static inline char *provider2path(const char *const provider){
 
 void set(){
 
-  // tun_create(TUN); // Fail
-  // tun_addr(TUN,"10.0.0.1",24);
-  // up(TUN);
+  ioctl_tun_create(TUN);
+  netlink_tun_addr(TUN,"10.0.0.1",24);
+  netlink_up(TUN);
 
   netlink_get_gateway(gw);
   netlink_del_gateway(WLO,gw);
-  // netlink_add_gateway(TUN,"10.0.0.2");
+  netlink_add_gateway(TUN,"10.0.0.2");
 
-  assert(profile.remote_host);
   netlink_add_route(WLO,profile.remote_host,gw);
 
 }
@@ -113,11 +113,11 @@ void reset(){
 
   netlink_del_route(WLO,profile.remote_host,gw);
 
-  // netlink_del_gateway(TUN,"10.0.0.2");
+  netlink_del_gateway(TUN,"10.0.0.2");
   netlink_add_gateway(WLO,gw);
 
-  // down(TUN);
-  // del_link(TUN);
+  netlink_down(TUN);
+  netlink_del_link(TUN);
 
 }
 

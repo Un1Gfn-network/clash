@@ -1,16 +1,14 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 #include <net/if_arp.h>
+#include <sys/socket.h>
 
 #include <linux/if.h> // IFLA_OPER*
 extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
@@ -46,10 +44,8 @@ void netlink_init(){
 }
 
 void netlink_end(){
-  // privilege_escalate();
   assert(0==close(netlinkfd));
   netlinkfd=-1;
-  // privilege_drop();
 }
 
 static void clearbuf(){
@@ -779,7 +775,7 @@ void netlink_del_link(const char *const dev){
 
 }*/
 
-/*void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
+void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
   assert(prefixlen<=32);
   assert(ipv4&&strlen(ipv4));
   assert(dev&&strlen(dev));
@@ -816,13 +812,13 @@ void netlink_del_link(const char *const dev){
   receive();
   ack();
   clearbuf();
-}*/
+}
 
-/*void netlink_flags(const bool up,const char *const dev){
+void netlink_flags(const bool up,const char *const dev){
 
   assert(dev&&strlen(dev));
   const unsigned index=if_nametoindex(dev);
-  assert(index>=5);
+  assert(index>=1);
 
   ESCALATED(assert(sizeof(Req_link)==send(netlinkfd,&(Req_link){
     .nh={
@@ -846,7 +842,7 @@ void netlink_del_link(const char *const dev){
   ack();
   clearbuf();
 
-}*/
+}
 
 /*int main(){
 

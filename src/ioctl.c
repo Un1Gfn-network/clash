@@ -1,11 +1,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h> // open()
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h> // close() getuid()
+#include <unistd.h> // close()
 
 #include <arpa/inet.h> // inet_ntop
 #include <bsd/stdlib.h> // humanize_number(3bsd)
@@ -29,10 +28,9 @@
 // struct ethtool_cmd(deprecated) and ethtool_link_settings
 // #include <linux/ethtool.h>
 
-#include "def.h"
-
-#define SZ 32
-#define DEV "wlp2s0"
+#include "./def.h"
+#include "./ioctl.h"
+#include "./util.h"
 
 #define AT(x) ((struct sockaddr_in*)(&(x)))
 
@@ -41,31 +39,24 @@
 // #define NAME_FMT "%-"STR(IFNAMSIZ)"s "
 #define NAME_FMT "%s "
 
-// jserv.c
-char *json_load_server();
+// static int ioctlfd=-1;
 
-int ioctlfd=-1;
-char *server=NULL;
-const char *gateway="192.168.1.1"; // Impossible to get routing info w/ ioctl
-
-void init(){
-  ioctlfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
+/*void ioctl_init(){
+  ESCALATED(ioctlfd=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP));
   assert(ioctlfd==3);
-}
+}*/
 
-void end(){
-  close(ioctlfd);
+/*void ioctl_end(){
+  ESCALATED(close(ioctlfd));
   ioctlfd=-1;
-}
+}*/
 
 // "net": true for gateway, false for route
-#define add_route(D,IP,VIA) route(true,false,D,IP,VIA)
-#define del_route(D,IP,VIA) route(false,false,D,IP,VIA)
-#define add_gateway(D,VIA) route(true,true,D,NULL,VIA)
-#define del_gateway(D,VIA) route(false,true,D,NULL,VIA)
-void route(const bool add,const bool net,const char *const dev,const char *const dst,const char *const gw){
-
-  assert(0==getuid());
+/*#define ioctl_add_route(D,IP,VIA) route(true,false,D,IP,VIA)
+#define ioctl_del_route(D,IP,VIA) route(false,false,D,IP,VIA)
+#define ioctl_add_gateway(D,VIA) route(true,true,D,NULL,VIA)
+#define ioctl_del_gateway(D,VIA) route(false,true,D,NULL,VIA)
+void ioctl_route(const bool add,const bool net,const char *const dev,const char *const dst,const char *const gw){
 
   assert(dev&&strlen(dev));
   // assert( ( (bool)dst ^ (bool)net ) == 1 );
@@ -104,29 +95,31 @@ void route(const bool add,const bool net,const char *const dev,const char *const
   e.rt_dev=s;
 
   errno=0;
-  if(-1==ioctl(ioctlfd,add?SIOCADDRT:SIOCDELRT,&e)){
+  int r=0;
+  ESCALATED(r=ioctl(ioctlfd,add?SIOCADDRT:SIOCDELRT,&e));
+  if(r==-1){
     const int err=errno;
     printf("%d %s\n",err,strerror(err));
-    assert(false);    
+    assert(0);    
   }
 
-}
+}*/
 
-void steal_flag_u16(short *flags,const short f,const char *const s){
+/*static inline void steal_flag_u16(short *flags,const short f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
-}
+}*/
 
-void steal_flag_u32(unsigned *flags,const unsigned f,const char *const s){
+/*static inline void steal_flag_u32(unsigned *flags,const unsigned f,const char *const s){
   if(*flags&f){
     printf("%s ",s);
     *flags=*flags&(~f);
   }
-}
+}*/
 
-void showaddr(const char *t,struct sockaddr *addr){
+/*static inline void showaddr(const char *t,struct sockaddr *addr){
 
   assert(addr);
   (t&&strlen(t))?printf("%s ",t):0;
@@ -165,9 +158,9 @@ void showaddr(const char *t,struct sockaddr *addr){
     }
   }
 
-}
+}*/
 
-void humanize(long n){
+/*static inline void humanize(long n){
   int scale=0;
   char buf[SZ]={};
   for(;;){
@@ -182,9 +175,9 @@ void humanize(long n){
   assert(2<=humanize_number(buf,SZ,n,"",scale,HN_DECIMAL|HN_NOSPACE|HN_B));
   printf("%s ",buf);
   fflush(stdout);
-}
+}*/
 
-void netdevice(const char *const name){
+/*void ioctl_netdevice(const char *const name){
 
   struct ifreq ifr={};
   int r=0;
@@ -271,9 +264,9 @@ void netdevice(const char *const name){
   #undef REFILL
   printf("\n");
 
-}
+}*/
 
-void onebyone(){
+/*void ioctl_onebyone(){
 
   #ifdef _LINUX_IF_H
   #pragma GCC error "include <net/if.h> instead of <linux/if.h>"
@@ -299,9 +292,9 @@ void onebyone(){
   }
   if_freenameindex(ifn);
   ifn=NULL;
-}
+}*/
 
-void all_ifconf(){
+/*void ioctl_all_ifconf(){
   struct ifconf ifc={
     .ifc_len=0,
     .ifc_req=NULL
@@ -325,9 +318,9 @@ void all_ifconf(){
     showaddr(NULL,&(ifc.ifc_req[i].ifr_addr));
     printf("\n");
   }
-}
+}*/
 
-void all_getifaddrs(){
+/*void ioctl_all_getifaddrs(){
   struct ifaddrs *ifa=NULL;
   assert(0==getifaddrs(&ifa));
   assert(ifa);
@@ -341,9 +334,10 @@ void all_getifaddrs(){
       i->ifa_broadaddr &&
       i->ifa_dstaddr &&
       i->ifa_broadaddr->sa_family==AF_PACKET &&
-      i->ifa_dstaddr->sa_family==AF_PACKET /*&&
-      PKT(i->ifa_addr)->sll_ifindex==PKT(i->ifa_broadaddr)->sll_ifindex &&
-      PKT(i->ifa_addr)->sll_ifindex==PKT(i->ifa_dstaddr)->sll_ifindex*/
+      i->ifa_dstaddr->sa_family==AF_PACKET
+      // &&
+      // PKT(i->ifa_addr)->sll_ifindex==PKT(i->ifa_broadaddr)->sll_ifindex &&
+      // PKT(i->ifa_addr)->sll_ifindex==PKT(i->ifa_dstaddr)->sll_ifindex
     ):0;
 
     // pkt?printf("#%d ",PKT(i)->sll_ifindex):0;
@@ -394,43 +388,31 @@ void all_getifaddrs(){
   }
 
   free(ifa);
-}
+}*/
 
-void tun_create(const char *const dev){
-  assert(0==getuid());
+void ioctl_tun_create(const char *const dev){
   assert(dev&&strlen(dev));
   struct ifreq ifc={.ifr_flags=IFF_TUN|IFF_NO_PI};
   strncpy(ifc.ifr_name,dev,IFNAMSIZ);
   int tunfd=open("/dev/net/tun",O_RDWR);
   assert(tunfd>=3);
+  privilege_escalate();
   assert(0==ioctl(tunfd,TUNSETIFF,&ifc));
   assert(0==ioctl(tunfd,TUNSETPERSIST,1));
+  privilege_drop();
   close(tunfd);
   tunfd=-1;
 }
 
-// Fail
-/*void tun_del(const char *const dev){
-  assert(0==getuid());
-  assert(dev&&strlen(dev));
-  struct ifreq ifc={};
-  strncpy(ifc.ifr_name,dev,IFNAMSIZ);
-  int tunfd=open("/dev/net/tun",O_RDWR);
-  assert(tunfd>=3);
-  assert(0==ioctl(tunfd,TUNSETPERSIST,0));
-  close(tunfd);
-  tunfd=-1;
-}*/
-
-void cidr_mask(unsigned n,struct in_addr *sin_addr_p){
+/*static inline void cidr_mask(unsigned n,struct in_addr *sin_addr_p){
   assert(n<=32);
   unsigned host=0;
   for(;n>0;--n)
     host|=((1<<(32U-n))); // ((1<<31)>>(n-1));
   sin_addr_p->s_addr=htonl(host);
-}
+}*/
 
-void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
+/*void ioctl_tun_addr(const char *const dev,const char *const ipv4,unsigned n){
 
   struct sockaddr_in *sin=NULL;
 
@@ -448,26 +430,27 @@ void tun_addr(const char *const dev,const char *const ipv4,unsigned n){
   sin->sin_family=AF_INET;
   sin->sin_port=0;
   cidr_mask(n,&(sin->sin_addr));
-  // char s[SZ]={};
+  // char s[INET_ADDRSTRLEN]={};
   // assert(s==inet_ntop(AF_INET,&(sin->sin_addr),s,INET_ADDRSTRLEN));
   // printf("%s\n",s);
   assert(0==ioctl(ioctlfd,SIOCSIFNETMASK,&mask));
 
-}
+}*/
 
-#define up(D) flags(true,D)
-#define down(D) flags(false,D) // Does not change qdisc from fq_codel to noop
-void flags(const bool up,const char *const dev){
-  assert(0==getuid());
+/*#define ioctl_up(D) flags(true,D)
+#define ioctl_down(D) flags(false,D) // Does not change qdisc from fq_codel to noop
+void ioctl_flags(const bool up,const char *const dev){
+  privilege_escalate();
   struct ifreq ifr={};
   strncpy(ifr.ifr_name,dev,IFNAMSIZ);
   assert(0==ioctl(ioctlfd,SIOCGIFFLAGS,&ifr));
   if(up) ifr.ifr_flags|=IFF_UP;
   else ifr.ifr_flags&=(~((short)IFF_UP));
   assert(0==ioctl(ioctlfd,SIOCSIFFLAGS,&ifr));
-}
+  privilege_drop();
+}*/
 
-void set(){
+/*void set(){
 
   tun_create(TUN);
   // exit(0);
@@ -482,9 +465,9 @@ void set(){
   printf("%s\n",server);
   add_route(WLO,server,gateway);
 
-}
+}*/
 
-void reset(){
+/*void reset(){
 
   del_route(WLO,server,gateway);
   free(server);
@@ -496,9 +479,9 @@ void reset(){
   down(TUN); // Does not change qdisc from fq_codel to noop
   // tun_del(TUN); // Fail
 
-}
+}*/
 
-int main(){
+/*int main(){
 
   init();
 
@@ -517,4 +500,4 @@ int main(){
   end();
 
   return 0;
-}
+}*/

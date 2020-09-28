@@ -22,8 +22,8 @@ void netlink_del_link(const char *const dev);
 
 // void netlink_print_addr();
 
-// void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen);
+void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen);
 
-// #define netlink_up(D) netlink_flags(true,D)
-// #define netlink_down(D) netlink_flags(false,D) // Can change qdisc from fq_codel to noop?
-// void netlink_flags(const bool up,const char *const dev);
+#define netlink_up(D) netlink_flags(true,D)
+#define netlink_down(D) netlink_flags(false,D) // Can change qdisc from fq_codel to noop?
+void netlink_flags(const bool up,const char *const dev);
