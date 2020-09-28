@@ -15,43 +15,41 @@
 #include "./shadowsocks.h"
 #include "./def.h"
 
+#define HERE printf("%d\n",__LINE__);
+#define HERE2 printf("      %d\n",__LINE__);
+
+static pthread_t thread=0;
+
 // https://stackoverflow.com/a/28904385/
-pthread_mutex_t mutex=PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t mutex=PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
-bool started=false;
-pthread_cond_t cond=PTHREAD_COND_INITIALIZER;
+static pthread_cond_t cond=PTHREAD_COND_INITIALIZER;
 
-const int which=1;
-// const int which=0;
+typedef enum {
+  DOWN,
+  FAIL,
+  UP
+} Status;
+static Status status=DOWN;
 
-// profile_t profile={};
-profile_t profile={
-  .remote_host="42.157.192.81",
-  .remote_port=16460,
-  .local_addr="127.0.0.1",
-  .local_port=1080,
-  .password="5nJJ95sYf3b20HW3t72",
-  .method="chacha20-ietf-poly1305",
-  .fast_open=1,
-  .mode=1,
-  // 
-  .log=SS_LOG
-  // .log="/dev/stdout"
-  // .log="/dev/null"
-};
+profile_t profile={};
 
-static void callback(int socks_fd, int udp_fd,void *data);
-static void *start_routine(void *arg){
-  assert(!arg);
-  printf("starting ss\n");
-  assert(-1!=start_ss_local_server_with_callback(profile,callback,NULL));
-  return NULL;
+// https://stackoverflow.com/q/16522858/
+static void pthread_change_status(const Status s){
+  (status==DOWN)?assert(s==UP||s==FAIL):assert(s==DOWN);
+  pthread_mutex_lock(&mutex);
+  status=s;
+  pthread_cond_signal(&cond);
+  pthread_mutex_unlock(&mutex);
 }
 
-static void sigint_ignore(){
-  struct sigaction oldact={};
-  assert(0==sigaction(SIGINT,&(struct sigaction){.sa_handler=SIG_IGN},&oldact));
-  assert(oldact.sa_handler==SIG_DFL);
+static void pthread_wait_stat_change_from(const Status s0){
+  assert(0==pthread_mutex_lock(&mutex));
+  while(status==s0){
+    assert(0==pthread_cond_wait(&cond,&mutex));
+  }
+  assert(status!=s0); // start_routine() sets status to either UP or FAIL
+  assert(0==pthread_mutex_unlock(&mutex));
 }
 
 static void callback(int socks_fd, int udp_fd,void *data){
@@ -61,40 +59,61 @@ static void callback(int socks_fd, int udp_fd,void *data){
     udp_fd>=3 &&
     socks_fd!=udp_fd
   );
-  which?sleep(1):0;
-  printf("ss started, log \'%s\'\n",SS_LOG);
-
-  pthread_mutex_lock(&mutex);
-  started=true;
-  pthread_cond_signal(&cond);
-  pthread_mutex_unlock(&mutex);
-
+  printf("ss status, log \'%s\'\n",SS_LOG);
+  pthread_change_status(UP);
 }
 
-int main(){
+static void *start_routine(void *arg){
+  assert(!arg);
+  assert(status==DOWN);
+  printf("starting ss\n");
+  if(-1==start_ss_local_server_with_callback(profile,callback,NULL)){
+    // Failed
+    pthread_change_status(FAIL);
+    printf("ss failed\n");
+  }else{
+    // Succeeded, served and manually stopped
+    pthread_wait_stat_change_from(DOWN);
+    assert(status==UP);
+  }
+  return NULL;
+}
 
-  // printf("pid %d\n",getpid());
-
-  // sigint_ignore();
-
-  pthread_t thread=-1;
+bool start_ss(){
+  (status==FAIL)?status=DOWN:0;
+  assert(thread==0);
   assert(0==pthread_create(&thread,NULL,start_routine,NULL));
   assert(thread>=1);
-  // printf("thread #%lu\n",thread);
+  pthread_wait_stat_change_from(DOWN);
+  switch(status){
+    case UP:return true;break;
+    case FAIL:return false;break;
+    default:assert(0);break;
+  }
+}
 
-  which?0:sleep(1);
-
-  // while(!started){}
-  // assert(0==pthread_kill(thread,SIGINT));
-  // printf("ss interrupted\n");
-
-  assert(0==pthread_mutex_lock(&mutex));
-  if(!started)
-    assert(0==pthread_cond_wait(&cond,&mutex));
+void stop_ss(){
+  assert(status==UP);
   assert(0==pthread_kill(thread,SIGINT));
   printf("ss interrupted\n");
-  assert(0==pthread_mutex_unlock(&mutex));
+  pthread_change_status(DOWN);
+}
+
+/*static void sigint_ignore(){
+  struct sigaction oldact={};
+  assert(0==sigaction(SIGINT,&(struct sigaction){.sa_handler=SIG_IGN},&oldact));
+  assert(oldact.sa_handler==SIG_DFL);
+}*/
+
+/*int main(){
+
+  // printf("pid %d\n",getpid());
+  // sigint_ignore();
+
+  start_ss();
+
+  stop_ss();
 
   return 0;
 
-}
+}*/

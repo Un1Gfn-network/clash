@@ -131,28 +131,48 @@ int main(const int argc,const char **argv){
     (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
   );
 
-  char *yaml_path=provider2path(argv[1]);
-  char *server_title=current_server_title();
-  printf("\'%s\'\n",server_title);
-  yaml2profile(yaml_path,server_title);
-  profile2json(server_title);
-  free(server_title);
-  free(yaml_path);
-  server_title=NULL;
-  yaml_path=NULL;
+  // char *yaml_path=provider2path(argv[1]);
+  // char *server_title=current_server_title();
+  // printf("\'%s\'\n",server_title);
+  // yaml2profile(yaml_path,server_title);
+  // profile2json(server_title);
+  // free(server_title);
+  // free(yaml_path);
+  // server_title=NULL;
+  // yaml_path=NULL;
 
-  netlink_init();
-  set();
+  profile=(profile_t){
+    .remote_host="42.157.192.81",
+    .remote_port=16460,
+    .local_addr="127.0.0.1",
+    .local_port=1080,
+    .password="5nJJ95sYf3b20HW3t72",
+    .method="chacha20-ietf-poly1305",
+    .fast_open=1,
+    .mode=1,
+    //
+    .log=SS_LOG
+    // .log="/dev/stdout"
+    // .log="/dev/null"
+  };
 
-  printf("? ");
-  fflush(stdout);
-  char s[SZ]={};
-  assert(s==fgets(s,SZ,stdin));
+  // netlink_init();
+  // set();
 
-  reset();
-  netlink_end();
+  // kill_clash();
+  if(start_ss()){
+    printf("? ");fflush(stdout);
+    fflush(stdout);
+    char s[SZ]={};
+    assert(s==fgets(s,SZ,stdin));
+    stop_ss();
+  }
+  exit(0);
 
-  clear_profile();
+  // reset();
+  // netlink_end();
+
+  // clear_profile();
 
   return 0;
 
