@@ -30,7 +30,7 @@
 
 #include "./def.h"
 #include "./ioctl.h"
-#include "./util.h"
+#include "./privilege.h"
 
 #define AT(x) ((struct sockaddr_in*)(&(x)))
 

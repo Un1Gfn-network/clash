@@ -15,7 +15,7 @@ extern unsigned int if_nametoindex (const char *__ifname) __THROW; // <net/if.h>
 
 #include "./def.h" // TUN WLO
 #include "./netlink.h"
-#include "./util.h"
+#include "./privilege.h"
 
 static int netlinkfd=-1;
 

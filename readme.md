@@ -1,3 +1,17 @@
+Change module filename
+
+```bash
+make clean
+git mv -- {old,new}.h
+git mv -- {old,new}.c
+find . -type f \( -name '*.c' -o -name '*.h' \) -exec grep -H 'old.h' {} \;
+# Check previous output before invoking sed
+find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/old.h/new.h/g' {} \;
+git diff
+```
+
+---
+
 D-Bus
 
 [wpa_supplicant D-Bus API](https://w1.fi/wpa_supplicant/devel/dbus.html)

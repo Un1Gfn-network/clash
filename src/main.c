@@ -8,10 +8,11 @@
 #include "./conf.h"
 #include "./curl.h"
 #include "./def.h"
+#include "./proc.h"
 #include "./ioctl.h"
 #include "./netlink.h"
 #include "./shadowsocks.h"
-#include "./util.h"
+#include "./privilege.h"
 
 char gw[INET_ADDRSTRLEN]={};
 
@@ -121,15 +122,23 @@ void reset(){
 
 }
 
+// https://gitlab.com/procps-ng/procps/-/issues/40
+/*void freeproctab(proc_t** tab) {
+    proc_t** p;
+    for(p = tab; *p; p++)
+       freeproc(*p);
+    free(tab);
+}*/
+
 int main(const int argc,const char **argv){
 
-  privilege_drop();
+  // privilege_drop();
 
-  assert(
-    argc==2 &&
-    argv[1] &&
-    (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
-  );
+  // assert(
+  //   argc==2 &&
+  //   argv[1] &&
+  //   (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
+  // );
 
   // char *yaml_path=provider2path(argv[1]);
   // char *server_title=current_server_title();
@@ -141,33 +150,32 @@ int main(const int argc,const char **argv){
   // server_title=NULL;
   // yaml_path=NULL;
 
-  profile=(profile_t){
-    .remote_host="42.157.192.81",
-    .remote_port=16460,
-    .local_addr="127.0.0.1",
-    .local_port=1080,
-    .password="5nJJ95sYf3b20HW3t72",
-    .method="chacha20-ietf-poly1305",
-    .fast_open=1,
-    .mode=1,
-    //
-    .log=SS_LOG
-    // .log="/dev/stdout"
-    // .log="/dev/null"
-  };
+  // profile=(profile_t){
+  //   .remote_host="42.157.192.81",
+  //   .remote_port=16460,
+  //   .local_addr="127.0.0.1",
+  //   .local_port=1080,
+  //   .password="5nJJ95sYf3b20HW3t72",
+  //   .method="chacha20-ietf-poly1305",
+  //   .fast_open=1,
+  //   .mode=1,
+  //   //
+  //   .log=SS_LOG
+  //   // .log="/dev/stdout"
+  //   // .log="/dev/null"
+  // };
 
   // netlink_init();
   // set();
 
-  // kill_clash();
-  if(start_ss()){
-    printf("? ");fflush(stdout);
-    fflush(stdout);
-    char s[SZ]={};
-    assert(s==fgets(s,SZ,stdin));
-    stop_ss();
-  }
-  exit(0);
+  kill_clash();
+  // if(start_ss()){
+  //   printf("? ");fflush(stdout);
+  //   fflush(stdout);
+  //   char s[SZ]={};
+  //   assert(s==fgets(s,SZ,stdin));
+  //   stop_ss();
+  // }
 
   // reset();
   // netlink_end();
