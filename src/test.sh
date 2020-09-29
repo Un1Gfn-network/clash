@@ -27,5 +27,7 @@ ip r a default via 192.168.1.1 dev wlp2s0 proto dhcp src 192.168.1.223 metric 30
 sudo -u darren make
 
 ./clash_tun.out rixcloud
+# gdb --args ./clash_tun.out rixcloud
+# valgrind ./clash_tun.out rixcloud
 # valgrind ./route_ioctl.out
 # valgrind ./route.out

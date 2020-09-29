@@ -42,30 +42,23 @@ static inline proc_t *inspect_proc(proc_t *proc){
       pid==proc->tgid&&
       pid==proc->tpgid
     );
-    printf("killing %d %s\n",pid,*(proc->cmdline));
     privilege_escalate();
-
     int pidfd=syscall(__NR_pidfd_open,pid,0);
-    assert(pidfd>=3);
+    assert(pidfd>=0);
+    printf("killing %d %s\n",pid,*(proc->cmdline));
     assert(0==syscall(__NR_pidfd_send_signal,pidfd,SIGINT,NULL,0));
     struct pollfd pollfd={
       .fd=pidfd,
       .events=POLLIN,
       .revents=0
     };
-    // HERE;
-    // sleep(5);
-    // HERE;
     for(;;){
       assert(0<=poll(&pollfd,1,-1));
       // printf("POLLIN(0x%x) = %d\n",POLLIN,(pollfd.revents&POLLIN));
       if(pollfd.revents&POLLIN)break;
       usleep(100000);
     }
-
-    // assert(0==kill(proc->tid,SIGINT));
-    // kill(proc->tid,SIGINT);
-
+    printf("killed\n");
     privilege_drop();
   }
   return proc;

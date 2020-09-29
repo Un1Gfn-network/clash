@@ -5,7 +5,7 @@
 
 #include <netinet/in.h> // INET_ADDRSTRLEN
 
-#include "./conf.h"
+#include "./profile.h"
 #include "./def.h"
 #include "./ioctl.h"
 #include "./netlink.h"
@@ -89,6 +89,7 @@ int main(const int argc,const char **argv){
   yaml_path=NULL;
 
   kill_clash();
+  assert(profile_loaded());
   assert(start_ss());
 
   netlink_init();
@@ -103,7 +104,9 @@ int main(const int argc,const char **argv){
   reset();
   netlink_end();
 
+  assert(profile_loaded());
   profile_clear();
+  assert(!profile_loaded());
 
   return 0;
 

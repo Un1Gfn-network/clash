@@ -10,7 +10,7 @@
 #include <shadowsocks.h>
 #include <yaml.h>
 
-#include "./conf.h"
+#include "./profile.h"
 #include "./def.h"
 #include "./resolv.h"
 #include "./shadowsocks.h"
@@ -22,6 +22,103 @@
 
 static yaml_parser_t parser={};
 static yaml_token_t token={};
+
+profile_t profile={
+
+  // Zero
+  // .timeout
+  // .acl
+  // .mtu
+  // .mptcp
+  // .verbose
+
+  // Immutable
+  .local_addr=LOCAL_ADDR,
+  .local_port=LOCAL_PORT_I,
+  .log=SS_LOG,
+  .fast_open=1,
+  .mode=1
+
+  // Mutable
+  // .remote_host // S0
+  // .method // S1
+  // .password // S2
+  // .remote_port // I0
+
+};
+
+#define S0 (profile.remote_host)
+#define S1 (profile.method)
+#define S2 (profile.password)
+#define I0 (profile.remote_port)
+
+bool profile_loaded(){
+  assert(
+    // Zero
+    profile.timeout==0 &&
+    (!profile.acl) &&
+    profile.mtu==0 &&
+    profile.mptcp==0 &&
+    profile.verbose==0 &&
+    // Immutable
+    profile.local_addr && 0==strcmp(LOCAL_ADDR,profile.local_addr) &&
+    profile.local_port==LOCAL_PORT_I &&
+    profile.log && 0==strcmp(profile.log,SS_LOG) &&
+    profile.fast_open==1 &&
+    profile.mode==1
+  );
+  // Mutable
+  if(S0){
+    assert(
+      S1&&S2&&
+      strlen(S0)&&strlen(S1)&&strlen(S2)&&
+      (I0>=1)
+    );
+    return true;
+  }
+  assert(
+    (!S0)&&(!S1)&&(!S2)&&
+    (I0==0)
+  );
+  return false;
+}
+
+void profile_clear(){
+  assert(profile_loaded());
+  free(S0);free(S1);free(S2);
+  S0=NULL;S1=NULL;S2=NULL;
+  I0=0;
+  assert(!profile_loaded());
+  // https://stackoverflow.com/q/1493936#comment1346424_1493988
+  // const unsigned char *const p=(const unsigned char*)(&profile);
+  // assert(p[0]==0);
+  // assert(0==memcmp(p,p+1,sizeof(profile_t)-1));
+}
+
+#undef S0
+#undef S1
+#undef S2
+#undef I0
+
+void profile_inspect(){
+  printf("\n");
+  printf("%s\n",profile.remote_host);
+  printf("%s\n",profile.local_addr);
+  printf("%s\n",profile.method);
+  printf("%s\n",profile.password);
+  printf("%d\n",profile.remote_port);
+  printf("%d\n",profile.local_port);
+  printf("%d\n",profile.timeout);
+  printf("\n");
+  printf("%s\n",profile.acl?profile.acl:"null");
+  printf("%s\n",profile.log?profile.log:"null");
+  printf("%d\n",profile.fast_open);
+  printf("%d\n",profile.mode);
+  printf("%d\n",profile.mtu);
+  printf("%d\n",profile.mptcp);
+  printf("%d\n",profile.verbose);
+  printf("\n");
+}
 
 static inline void type(){
   switch(token.type){
@@ -98,47 +195,9 @@ static inline char *assert_key_get_val(const char *const k){
   return ret;
 }
 
-void profile_clear(){
-  #define S0 (profile.remote_host)
-  #define S1 (profile.local_addr)
-  #define S2 (profile.method)
-  #define S3 (profile.password)
-  #define S4 (profile.log)
-  #define I0 (profile.remote_port)
-  #define I1 (profile.local_port)
-  #define I2 (profile.fast_open)
-  #define I3 (profile.mode)
-  if(S0){
-    assert(
-      S1&&S2&&S3&&
-      strlen(S0)&&strlen(S1)&&strlen(S2)&&strlen(S3)&&strlen(S4)&&
-      (I0>=1)&&(I1>=1)&&(I2>=1)&&(I3>=1)
-    );
-    free(S0);free(S1);free(S2);free(S3);free(S4);
-    S0=NULL;S1=NULL;S2=NULL;S3=NULL;S4=NULL;
-    I0=0;I1=0;I2=0;I3=0;
-  }else{
-    assert(
-      (!S0)&&(!S1)&&(!S2)&&(!S3)&&(!S4)&&
-      (I0==0)&&(I1==0)&&(I2==0)&&(I3==0)
-    );
-  }
-  // https://stackoverflow.com/q/1493936#comment1346424_1493988
-  const unsigned char *const p=(const unsigned char*)(&profile);
-  assert(p[0]==0);
-  assert(0==memcmp(p,p+1,sizeof(profile_t)-1));
-  #undef S0
-  #undef S1
-  #undef S2
-  #undef S3
-  #undef S4
-  #undef I0
-  #undef I1
-  #undef I2
-  #undef I3
-}
-
 void yaml2profile(const char *const from_yaml,const char *const server_title){
+
+  assert(!profile_loaded());
 
   // Init
   yaml_parser_initialize(&parser);
@@ -206,12 +265,7 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
     assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
   }
 
-  profile_clear();
-  //
-  profile.local_port=LOCAL_PORT_I;
-  profile.local_addr=strdup(LOCAL_ADDR);
-  profile.fast_open=true;
-  profile.mode=true;
+  assert(!profile_loaded());
   //
   assert(0==assert_key_compare_val("type","ss"));
   char *domain=assert_key_get_val("server");
@@ -228,7 +282,8 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
   free(remote_port);
   domain=NULL;
   //
-  profile.log=strdup(SS_LOG);
+  // profile_inspect();
+  assert(profile_loaded());
 
   assert_token_type(YAML_BLOCK_END_TOKEN);
 
@@ -278,16 +333,15 @@ static inline void appendjson(json_object *const root,const char *const k,const 
 //   "mode": "tcp_and_udp"
 // }
 void profile2json(const char *const server_title){
+  assert(profile_loaded());
   json_object *root=json_object_new_object();
   assert(root);
   char server_port[8]={};
-  char local_port[8]={};
   sprintf(server_port,"%d",profile.remote_port);
-  sprintf(local_port ,"%d",profile.local_port);
   appendjson(root,"server"       ,profile.remote_host);
   appendjson(root,"server_port"  ,server_port);
   appendjson(root,"local_address",profile.local_addr);
-  appendjson(root,"local_port"   ,local_port);
+  appendjson(root,"local_port"   ,LOCAL_PORT_S);
   appendjson(root,"password"     ,profile.password);
   appendjson(root,"method"       ,profile.method);
   appendjson(root,"fast_open"    ,"true");assert(profile.fast_open);
