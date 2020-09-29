@@ -32,6 +32,14 @@ busctl
 
 [impossible to get method arg name in normal output, get xml instead](https://github.com/systemd/systemd/blob/master/src/busctl/busctl-introspect.c#L429)
 
+Clean-up Variable Attribute - sd_event(3)
+
+```C
+__attribute__((cleanup(sd_event_unrefp))) sd_event *event = NULL;
+```
+
+org.freedesktop.Notifications
+
 ```bash
 BUSCTL="busctl --user --no-pager"
 $BUSCTL list
@@ -44,10 +52,34 @@ $BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.fr
 unset -v BUSCTL
 ```
 
-Clean-up Variable Attribute - sd_event(3)
+org.freedesktop.resolve1
 
-```C
-__attribute__((cleanup(sd_event_unrefp))) sd_event *event = NULL;
+<!--
+
+<method name="SetLinkDNS">
+ <arg type="i" name="ifindex" direction="in"/>
+ <arg type="a(iay)" name="addresses" direction="in"/>
+</method>
+
+AF_INET==2
+
+3,[(2,[192,168,1,1])]
+
+-->
+
+```bash
+su -
+# input password
+BUSCTL="busctl --system --no-pager"
+SERVICE="org.freedesktop.resolve1"
+OBJECT="/org/freedesktop/resolve1"
+INTERFACE="org.freedesktop.resolve1.Manager"
+METHOD="SetLinkDNS"
+$BUSCTL tree $SRV
+$BUSCTL introspect $SERVICE $OBJECT | less -SRM +%
+$BUSCTL --xml-interface introspect $SERVICE $OBJECT | less -SRM +%
+$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   1   2 4 192 168 1 1
+$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   2   2 4 8 8 8 8       2 4 8 8 4 4
 ```
 
 ---
