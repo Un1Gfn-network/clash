@@ -24,7 +24,7 @@ profile.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c shadowsocks
 ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
 shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 
-clash_tun.out:main.o profile.o resolv.o shadowsocks.o restful.o netlink.o privilege.o ioctl.o proc.o
+clash_tun.out:main.o profile.o resolv.o shadowsocks.o restful.o netlink.o privilege.o ioctl.o proc.o file.o
 	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd libprocps)
 
 ###

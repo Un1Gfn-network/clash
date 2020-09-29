@@ -14,15 +14,26 @@ trap 'exit 1' SIGINT
 
 test "$(whoami)" = "root"
 
-set +e
-ip a f tunT
-ip l s tunT down
-ip l d tunT
-set -e
+for tun in "tun0" "tunT"; do
+  set +e
+  ip a f "$tun"
+  ip l s "$tun" down
+  ip l d "$tun"
+  set -e
+done
 
 ip r f t main
 ip r a 192.168.1.0/24 dev wlp2s0 proto dhcp scope link src 192.168.1.223 metric 303
 ip r a default via 192.168.1.1 dev wlp2s0 proto dhcp src 192.168.1.223 metric 303
+
+resolvectl llmnr      wlp2s0 no
+resolvectl mdns       wlp2s0 no
+resolvectl dnsovertls wlp2s0 no
+resolvectl dnssec     wlp2s0 no
+resolvectl dns        wlp2s0 ""
+resolvectl dns        wlp2s0 "127.127.127.127"
+resolvectl flush-caches
+resolvectl dns        wlp2s0 "8.8.8.8" "8.8.4.4"
 
 sudo -u darren make
 

@@ -1,7 +1,8 @@
 #pragma once
 
 #define SS_LOCAL_JSON "/tmp/ss-local.json"
-#define TUN "tunT"
+// #define TUN "tunT"
+#define TUN "tun0"
 #define WLO "wlp2s0"
 
 #define LOCAL_PORT_I 1080
@@ -18,3 +19,6 @@
 #define USR "darren"
 
 #define SS_LOG "/tmp/ss-local.log"
+#define TUN_LOG "/tmp/badvpn-tun2socks.log"
+
+#define DNS {"8.8.8.8","8.8.4.4",NULL}

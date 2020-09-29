@@ -2,15 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
 
 #include <netinet/in.h> // INET_ADDRSTRLEN
 
-#include "./profile.h"
 #include "./def.h"
+#include "./file.h"
 #include "./ioctl.h"
 #include "./netlink.h"
 #include "./privilege.h"
 #include "./proc.h"
+#include "./profile.h"
 #include "./restful.h"
 #include "./shadowsocks.h"
 
@@ -25,6 +29,47 @@ static inline char *provider2path(const char *const provider){
   strcat(ret,provider);
   strcat(ret,r);
   return ret;
+}
+
+static inline pid_t start_badvpn(){
+  const pid_t f=fork();
+  if(f>=1){
+    // Parent branch
+    // f is child pid
+    assert(1000==geteuid());
+    printf("starting badvpn-tun2socks %d\n",f);
+    return f;
+  }else{
+    // Child branch
+    assert(1000==geteuid());
+    assert(f==0);
+    // (2/2) Semaphore
+    try_unlink(TUN_LOG);
+    // int fd=create(TUN_LOG,0644);
+    int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC,0644);
+    // int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC|O_DIRECT|O_SYNC,0644);
+    assert(pfd>=3);
+    assert(0==close(STDOUT_FILENO));
+    assert(STDOUT_FILENO==dup2(pfd,STDOUT_FILENO));
+    assert(0==close(pfd));
+    // execl(3)
+    // execve(2)
+    privilege_escalate();
+    assert(-1!=execl(
+      "/usr/bin/badvpn-tun2socks",
+      "badvpn-tun2socks",
+      "--tundev"           ,TUN             ,
+      "--netif-ipaddr"     ,"10.0.0.2"      ,
+      "--netif-netmask"    ,"255.255.255.0" ,
+      "--socks-server-addr","127.0.0.1:1080",
+      "--socks5-udp",
+      (char*)NULL
+    ));
+    assert(0);
+    // Should never reach here
+    // privilege_drop();
+    // exit(0);
+  }
 }
 
 void set(){
@@ -53,8 +98,14 @@ void reset(){
 
 }
 
-int main(const int argc,const char **argv){
+void read_r(){
+  // (1/2) Semaphore
+  // printf("? ");fflush(stdout);
+  char s[SZ]={};
+  assert(s==fgets(s,SZ,stdin));
+}
 
+int main(const int argc,const char **argv){
   privilege_drop();
 
   assert(
@@ -62,21 +113,6 @@ int main(const int argc,const char **argv){
     argv[1] &&
     (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
   );
-
-  // profile=(profile_t){
-  //   .remote_host="42.157.192.81",
-  //   .remote_port=16460,
-  //   .local_addr="127.0.0.1",
-  //   .local_port=1080,
-  //   .password="5nJJ95sYf3b20HW3t72",
-  //   .method="chacha20-ietf-poly1305",
-  //   .fast_open=1,
-  //   .mode=1,
-  //   //
-  //   .log=SS_LOG
-  //   // .log="/dev/stdout"
-  //   // .log="/dev/null"
-  // };
 
   char *yaml_path=provider2path(argv[1]);
   char *server_title=current_server_title();
@@ -88,25 +124,39 @@ int main(const int argc,const char **argv){
   server_title=NULL;
   yaml_path=NULL;
 
-  kill_clash();
+  // (1/3) DNS
+  // bus_dns_set(DNS);
+
+  // (2/3) Shadowsocks
+  kill_sync("clash");
   assert(profile_loaded());
   assert(start_ss());
 
+  // (3/3) TUN & route
   netlink_init();
   set();
+  pid_t f=start_badvpn();
 
-  printf("? ");fflush(stdout);
-  fflush(stdout);
-  char s[SZ]={};
-  assert(s==fgets(s,SZ,stdin));
-  stop_ss();
+  // Impossible to know when badvpn-tun2socks becomes ready for SIGINT without inspecting its code
+  sleep(1);
+  read_r();
 
+  // (3/3) TUN & route
+  printf("killing badvpn-tun2socks %d\n",f);
+  ESCALATED(assert(0==kill(f,SIGINT)));
+  f=-1;
   reset();
   netlink_end();
 
-  assert(profile_loaded());
-  profile_clear();
-  assert(!profile_loaded());
+  // (2/3) Shadowsocks
+  stop_ss();
+
+  // (1/3) DNS
+  // bus_dns_reset();
+
+  // assert(profile_loaded());
+  // profile_clear();
+  // assert(!profile_loaded());
 
   return 0;
 

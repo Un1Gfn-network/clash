@@ -12,8 +12,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "./profile.h"
 #include "./def.h"
+#include "./file.h"
+#include "./profile.h"
 #include "./shadowsocks.h"
 
 static pthread_t thread=0;
@@ -63,6 +64,7 @@ static void callback(int socks_fd, int udp_fd,void *data){
 static void *start_routine(void *arg){
   assert(!arg);
   assert(status==DOWN);
+  try_unlink(SS_LOG);
   printf("starting ss\n");
   // profile_inspect();
   if(-1==start_ss_local_server_with_callback(profile,callback,NULL)){

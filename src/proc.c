@@ -26,7 +26,7 @@
     free(tab);
 }*/
 
-static inline proc_t *inspect_proc(proc_t *proc){
+static inline proc_t *inspect_proc(proc_t *proc,const char *const name){
   // printf(" %d %d %d %d | %s | %s\n",
   //   proc->tid,
   //   proc->pgrp,
@@ -35,7 +35,7 @@ static inline proc_t *inspect_proc(proc_t *proc){
   //   proc->cmd,
   //   *(proc->cmdline)
   // );
-  if(0==strcmp("clash",proc->cmd)){
+  if(0==strcmp(name,proc->cmd)){
     const int pid=proc->tid;
     assert(
       pid==proc->pgrp&&
@@ -64,7 +64,7 @@ static inline proc_t *inspect_proc(proc_t *proc){
   return proc;
 }
 
-void kill_clash(){
+void kill_sync(const char *const name){
   // PROCTAB *PT=openproc(PROC_FLAGS);
   // assert(PT);
   // proc_t *proc=NULL;
@@ -77,7 +77,7 @@ void kill_clash(){
   // PT=NULL;
   proc_t **procs=readproctab(PROC_FLAGS);
   for(proc_t **p=procs;*p;++p)
-    freeproc(inspect_proc(*p));
+    freeproc(inspect_proc(*p,name));
   free(procs);
   procs=NULL;
 }

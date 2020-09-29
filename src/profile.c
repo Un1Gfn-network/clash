@@ -10,8 +10,9 @@
 #include <shadowsocks.h>
 #include <yaml.h>
 
-#include "./profile.h"
 #include "./def.h"
+#include "./file.h"
+#include "./profile.h"
 #include "./resolv.h"
 #include "./shadowsocks.h"
 
@@ -22,6 +23,21 @@
 
 static yaml_parser_t parser={};
 static yaml_token_t token={};
+
+// profile=(profile_t){
+//   .remote_host="42.157.192.81",
+//   .remote_port=16460,
+//   .local_addr="127.0.0.1",
+//   .local_port=1080,
+//   .password="5nJJ95sYf3b20HW3t72",
+//   .method="chacha20-ietf-poly1305",
+//   .fast_open=1,
+//   .mode=1,
+//   //
+//   .log=SS_LOG
+//   // .log="/dev/stdout"
+//   // .log="/dev/null"
+// };
 
 profile_t profile={
 
@@ -347,13 +363,7 @@ void profile2json(const char *const server_title){
   appendjson(root,"fast_open"    ,"true");assert(profile.fast_open);
   appendjson(root,"mode"         ,"tcp_and_udp");assert(profile.mode);
   // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
-  const int i=unlink(SS_LOCAL_JSON);
-  if(i==-1){
-    assert(errno=ENOENT);
-  }else{
-    assert(i==0);
-    printf("removed \'%s\'\n",SS_LOCAL_JSON);
-  }
+  try_unlink(SS_LOCAL_JSON);
   assert(0==json_object_to_file_ext(
     SS_LOCAL_JSON,
     root,
