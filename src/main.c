@@ -8,6 +8,7 @@
 
 #include <netinet/in.h> // INET_ADDRSTRLEN
 
+#include "./bus.h"
 #include "./def.h"
 #include "./file.h"
 #include "./ioctl.h"
@@ -125,7 +126,9 @@ int main(const int argc,const char **argv){
   yaml_path=NULL;
 
   // (1/3) DNS
-  // bus_dns_set(DNS);
+  bus_init();
+  bus_call(&f_setdns);
+  bus_call(&f_flush);
 
   // (2/3) Shadowsocks
   kill_sync("clash");
@@ -152,7 +155,9 @@ int main(const int argc,const char **argv){
   stop_ss();
 
   // (1/3) DNS
-  // bus_dns_reset();
+  bus_call(&f_resetdns);
+  bus_call(&f_flush);
+  bus_end();
 
   // assert(profile_loaded());
   // profile_clear();
