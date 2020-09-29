@@ -98,11 +98,12 @@ static inline char *assert_key_get_val(const char *const k){
   return ret;
 }
 
-void clear_profile(){
+void profile_clear(){
   #define S0 (profile.remote_host)
   #define S1 (profile.local_addr)
   #define S2 (profile.method)
   #define S3 (profile.password)
+  #define S4 (profile.log)
   #define I0 (profile.remote_port)
   #define I1 (profile.local_port)
   #define I2 (profile.fast_open)
@@ -110,15 +111,15 @@ void clear_profile(){
   if(S0){
     assert(
       S1&&S2&&S3&&
-      strlen(S0)&&strlen(S1)&&strlen(S2)&&strlen(S3)&&
+      strlen(S0)&&strlen(S1)&&strlen(S2)&&strlen(S3)&&strlen(S4)&&
       (I0>=1)&&(I1>=1)&&(I2>=1)&&(I3>=1)
     );
-    free(S0);free(S1);free(S2);free(S3);
-    S0=NULL;S1=NULL;S2=NULL;S3=NULL;
+    free(S0);free(S1);free(S2);free(S3);free(S4);
+    S0=NULL;S1=NULL;S2=NULL;S3=NULL;S4=NULL;
     I0=0;I1=0;I2=0;I3=0;
   }else{
     assert(
-      (!S0)&&(!S1)&&(!S2)&&(!S3)&&
+      (!S0)&&(!S1)&&(!S2)&&(!S3)&&(!S4)&&
       (I0==0)&&(I1==0)&&(I2==0)&&(I3==0)
     );
   }
@@ -130,6 +131,7 @@ void clear_profile(){
   #undef S1
   #undef S2
   #undef S3
+  #undef S4
   #undef I0
   #undef I1
   #undef I2
@@ -204,7 +206,7 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
     assert_token_type(YAML_BLOCK_MAPPING_START_TOKEN);
   }
 
-  clear_profile();
+  profile_clear();
   //
   profile.local_port=LOCAL_PORT_I;
   profile.local_addr=strdup(LOCAL_ADDR);
@@ -225,6 +227,8 @@ void yaml2profile(const char *const from_yaml,const char *const server_title){
   free(domain);
   free(remote_port);
   domain=NULL;
+  //
+  profile.log=strdup(SS_LOG);
 
   assert_token_type(YAML_BLOCK_END_TOKEN);
 

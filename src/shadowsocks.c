@@ -15,9 +15,6 @@
 #include "./shadowsocks.h"
 #include "./def.h"
 
-#define HERE printf("%d\n",__LINE__);
-#define HERE2 printf("      %d\n",__LINE__);
-
 static pthread_t thread=0;
 
 // https://stackoverflow.com/a/28904385/
@@ -33,6 +30,26 @@ typedef enum {
 static Status status=DOWN;
 
 profile_t profile={};
+
+static void profile_inspect(){
+  printf("\n");
+  printf("%s\n",profile.remote_host);
+  printf("%s\n",profile.local_addr);
+  printf("%s\n",profile.method);
+  printf("%s\n",profile.password);
+  printf("%d\n",profile.remote_port);
+  printf("%d\n",profile.local_port);
+  printf("%d\n",profile.timeout);
+  printf("\n");
+  printf("%s\n",profile.acl?profile.acl:"null");
+  printf("%s\n",profile.log?profile.log:"null");
+  printf("%d\n",profile.fast_open);
+  printf("%d\n",profile.mode);
+  printf("%d\n",profile.mtu);
+  printf("%d\n",profile.mptcp);
+  printf("%d\n",profile.verbose);
+  printf("\n");
+}
 
 // https://stackoverflow.com/q/16522858/
 static void pthread_change_status(const Status s){
@@ -59,7 +76,8 @@ static void callback(int socks_fd, int udp_fd,void *data){
     udp_fd>=3 &&
     socks_fd!=udp_fd
   );
-  printf("ss status, log \'%s\'\n",SS_LOG);
+  assert(profile.log);
+  printf("ss running, log \'%s\'\n",profile.log);
   pthread_change_status(UP);
 }
 
@@ -67,6 +85,7 @@ static void *start_routine(void *arg){
   assert(!arg);
   assert(status==DOWN);
   printf("starting ss\n");
+  profile_inspect();
   if(-1==start_ss_local_server_with_callback(profile,callback,NULL)){
     // Failed
     pthread_change_status(FAIL);

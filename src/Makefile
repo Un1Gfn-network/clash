@@ -18,13 +18,13 @@ CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -D_GNU_S
 
 ###
 
-main.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
+restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 proc.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libprocps)
 conf.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c)
 ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
 shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 
-clash_tun.out:main.o conf.o resolv.o shadowsocks.o curl.o netlink.o privilege.o ioctl.o proc.o
+clash_tun.out:main.o conf.o resolv.o shadowsocks.o restful.o netlink.o privilege.o ioctl.o proc.o
 	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd libprocps)
 
 ###
