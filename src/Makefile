@@ -2,12 +2,16 @@
 
 default:
 	$(MAKE) clean
-	$(MAKE) clash_tun.out
-
-###
+	$(MAKE) install
 
 clean:
 	@rm -fv *.out *.o
+
+install: clash_tun.out
+	sudo rm -fv /usr/local/bin/$<
+	sudo install -groot -m755 -oroot -v $< /usr/local/bin/$<
+
+###
 
 CC::=gcc
 

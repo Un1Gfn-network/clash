@@ -38,7 +38,7 @@ static inline pid_t start_badvpn(){
     // Parent branch
     // f is child pid
     assert(1000==geteuid());
-    printf("starting badvpn-tun2socks %d\n",f);
+    printf("starting badvpn-tun2socks %d log \'%s\'\n",f,TUN_LOG);
     return f;
   }else{
     // Child branch
@@ -102,6 +102,8 @@ void reset(){
 void read_r(){
   // (1/2) Semaphore
   // printf("? ");fflush(stdout);
+  sleep(1);
+  printf("<Press Enter to Terminate> ");
   char s[SZ]={};
   assert(s==fgets(s,SZ,stdin));
 }
