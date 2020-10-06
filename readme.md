@@ -1,3 +1,33 @@
+
+
+
+
+
+
+
+
+
+# clash_tun
+
+## Todo
+
+[Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
+
+[go-tun2socks](https://github.com/eycorsican/go-tun2socks)
+
+[libnl](https://www.infradead.org/~tgr/libnl/)
+
+proc.c - inspect_proc() - wait till clash is dead
+* \__NR_pidfd_open + (pthread_create()+) \__NR_pidfd_send_signal + epoll_wait()
+* ptrace(2)
+* [netlink](https://bewareofgeek.livejournal.com/2945.html)
+
+main.c - start_badvpn() - enforce print order btw child & parent proc w/ semaphore
+
+## Misc
+
+[Glibc NPTL src](https://sourceware.org/git/?p=glibc.git;a=tree;f=nptl)
+
 Change module filename
 
 ```bash
@@ -10,90 +40,11 @@ find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/old.h/new.h/g' {
 git diff
 ```
 
----
-
-D-Bus
-
-[wpa_supplicant D-Bus API](https://w1.fi/wpa_supplicant/devel/dbus.html)
-
-[Dunst](https://wiki.archlinux.org/index.php/Dunst)
-* dunstify/notify-send
-http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html
-
-org.freedesktop.Notifications'
-* Execute in `d-feet` - `Session Bus` - `org.freedesktop.Notifications` - `Object path` - `/org/freedesktop/Notifications` - `Interfaces` - `org.freedesktop.Notifications` - `Methods` - `Notify()`
-* [Architecture](https://wiki.ubuntu.com/NotifyOSD#Architecture)
-* [C glib2/gio](https://wiki.archlinux.org/index.php/Desktop_notifications#C)
-
-sd_bus_message_append(3) `Table 1. Item type specifiers` `TYPES STRING GRAMMAR`
-bus_message_read(3) `Table 1. Item type specifiers`
-
-busctl
-
-[impossible to get method arg name in normal output, get xml instead](https://github.com/systemd/systemd/blob/master/src/busctl/busctl-introspect.c#L429)
-
-Clean-up Variable Attribute - sd_event(3)
-
-```C
-__attribute__((cleanup(sd_event_unrefp))) sd_event *event = NULL;
-```
-
-org.freedesktop.Notifications
-
-```bash
-BUSCTL="busctl --user --no-pager"
-$BUSCTL list
-$BUSCTL tree org.freedesktop.Notifications
-$BUSCTL introspect org.freedesktop.Notifications /org/freedesktop/Notifications
-$BUSCTL --xml-interface introspect org.freedesktop.Notifications /org/freedesktop/Notifications | less -SRM +%
-$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.DBus.Peer GetMachineId
-#       call SERVICE                       OBJECT                         INTERFACE                     METHOD [SIGNATURE      [ARGUMENT...]                                  ]
-$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.Notifications Notify "susssasa{sv}i" "app_name" 0 "app_icon" "summary" "body" 0 0 0
-unset -v BUSCTL
-```
-
-org.freedesktop.resolve1
-
-<!--
-
-<method name="SetLinkDNS">
- <arg type="i" name="ifindex" direction="in"/>
- <arg type="a(iay)" name="addresses" direction="in"/>
-</method>
-
-AF_INET==2
-
-3,[(2,[192,168,1,1])]
-
--->
-
-```bash
-su -
-# input password
-BUSCTL="busctl --system --no-pager"
-SERVICE="org.freedesktop.resolve1"
-OBJECT="/org/freedesktop/resolve1"
-INTERFACE="org.freedesktop.resolve1.Manager"
-METHOD="SetLinkDNS"
-$BUSCTL tree $SRV
-$BUSCTL introspect $SERVICE $OBJECT | less -SRM +%
-$BUSCTL --xml-interface introspect $SERVICE $OBJECT | less -SRM +%
-$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   1   2 4 192 168 1 1
-$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   2   2 4 8 8 8 8       2 4 8 8 4 4
-```
-
----
-
 [SO answer ioctl/netlink interface up/down](https://stackoverflow.com/a/63950398)
 
-[Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
-
-tun2socks
+ambrop72/badvpn/tun2socks
 * [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
-* <del>[Add UDP forwarding w/ badvpn-udpgw](https://github.com/ambrop72/badvpn/wiki/Tun2socks#udp-forwarding)</del>
-* ambrop72/badvpn [`--socks5-udp`](https://github.com/ambrop72/badvpn/blob/master/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--socks5-udp%22%29) (release too old, build badvpn-git)
-* shadowsocks/badvpn [`--enable-udprelay`](https://github.com/shadowsocks/badvpn/blob/shadowsocks-android/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--enable-udprelay%22%29)
-* [go-tun2socks](https://github.com/eycorsican/go-tun2socks)
+* [`--socks5-udp`](https://github.com/ambrop72/badvpn/blob/master/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--socks5-udp%22%29) (release too old, build badvpn-git) :heavy_check_mark:
 
 [Android tcpdump](https://www.androidtcpdump.com/android-tcpdump/compile)
 
@@ -137,13 +88,6 @@ adb pull /sdcard/Download/android.pcap
 
 ```
 
-Q
-
-* tell dhcpcd to refresh
-* /usr/include/linux/if_link.h
-  * IFLA_MAP
-  * IFLA_LINKINFO
-
 little-endian
 
 ```
@@ -155,27 +99,18 @@ rta         rta+4
 01
 ```
 
-DNS
-* [DNS黑魔法](https://medium.com/@TachyonDevel/%E6%BC%AB%E8%B0%88%E5%90%84%E7%A7%8D%E9%BB%91%E7%A7%91%E6%8A%80%E5%BC%8F-dns-%E6%8A%80%E6%9C%AF%E5%9C%A8%E4%BB%A3%E7%90%86%E7%8E%AF%E5%A2%83%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8-62c50e58cbd0)
-* [fake-ip](https://blog.skk.moe/post/what-happend-to-dns-in-proxy/)
-
-netlink
-* [libnl](https://www.infradead.org/~tgr/libnl/)
-* [rtnetlink tutorial](https://www.linuxjournal.com/article/8498)
-* [netlink tutorial](https://www.linuxjournal.com/article/7356)
-
 Clash
 * [config.yaml](https://lancellc.gitbook.io/clash/)
 * [external controller API](https://clash.gitbook.io/doc/restful-api) ([short](https://github.com/Dreamacro/clash/wiki/external-controller-API-reference))
 
 libcurl
-*  https://curl.haxx.se/libcurl/c/SOME_FUNCTION.html
+* https://curl.haxx.se/libcurl/c/SOME_FUNCTION.html
 
 [python percent encode $1](https://unix.stackexchange.com/questions/159253/decoding-url-encoding-percent-encoding)
 
 json-c
-  * [synopsis](https://github.com/json-c/json-c#using-json-c-)
-  * [doc](http://json-c.github.io/json-c/json-c-current-release/doc/html/index.html)
+* [synopsis](https://github.com/json-c/json-c#using-json-c-)
+* [doc](http://json-c.github.io/json-c/json-c-current-release/doc/html/index.html)
 
 According to [redsocks](https://github.com/darkk/redsocks/blob/master/README.md)
 >Probably, the better way is to use on-device VPN daemon to intercept
@@ -214,31 +149,23 @@ http://127.0.0.1:6170/proxies/GLOBAL
 }
 ```
 
-## Start VPN
-
-extract
+Start VPN
 
 ```bash
+# Extract
 make clean
 make clash_tun.out
 ./clash_tun.out rixcloud
 cat /tmp/ss-local.json
-```
 
-ss-local (tty3)
+# ss-local (tty3)
 
-```bash
 # Stop clash
 ss-local -v -c /tmp/ss-local.json
-```
 
-tun2socks
+# tun2socks
 
-```bash
 su -
-# IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')" "8.8.8.8" "8.8.4.4")
-# IP=("$(jq </tmp/ss-local.json '.server' | tr -d '"')")
-# echo ${IP[@]}
 
 # resolvectl revert wlp2s0
 resolvectl llmnr      wlp2s0 no
@@ -263,21 +190,15 @@ ip route add default via "10.0.0.2"
 # iptables -A OUTPUT -p udp -j REJECT
 # iptables -S
 
-# badvpn-udpgw \
-#   --logger stdout \
-#   --loglevel info \
-#   --listen-addr 127.0.0.1:7300
 badvpn-tun2socks \
   --tundev tun0 \
   --netif-ipaddr 10.0.0.2 \
   --netif-netmask 255.255.255.0 \
   --socks-server-addr 127.0.0.1:1080 \
   --socks5-udp
-# --udpgw-remote-server-addr 127.0.0.1:7300
-# --enable-udprelay
 ```
 
-## Stop VPN
+Stop VPN
 
 ```bash
 killall badvpn-tun2socks
@@ -300,12 +221,55 @@ resolvectl flush-caches
 resolvectl dns        wlp2s0 "192.168.1.1"
 ```
 
-<!--
+## D-Bus
 
-dhcpcd
+[wpa_supplicant D-Bus API](https://w1.fi/wpa_supplicant/devel/dbus.html)
 
-```bash
-dhcpcd.sh
+[Dunst](https://wiki.archlinux.org/index.php/Dunst)
+* dunstify/notify-send
+
+org.freedesktop.Notifications
+* Execute in `d-feet` - `Session Bus` - `org.freedesktop.Notifications` - `Object path` - `/org/freedesktop/Notifications` - `Interfaces` - `org.freedesktop.Notifications` - `Methods` - `Notify()`
+* [Architecture](https://wiki.ubuntu.com/NotifyOSD#Architecture)
+* [C glib2/gio](https://wiki.archlinux.org/index.php/Desktop_notifications#C)
+
+sd_bus_message_append(3) `Table 1. Item type specifiers` `TYPES STRING GRAMMAR`  
+bus_message_read(3) `Table 1. Item type specifiers`
+
+Clean-up Variable Attribute - sd_event(3)
+
+```C
+__attribute__((cleanup(sd_event_unrefp))) sd_event *event = NULL;
 ```
 
--->
+org.freedesktop.Notifications
+
+```bash
+BUSCTL="busctl --user --no-pager"
+$BUSCTL list
+$BUSCTL tree org.freedesktop.Notifications
+$BUSCTL introspect org.freedesktop.Notifications /org/freedesktop/Notifications
+$BUSCTL --xml-interface introspect org.freedesktop.Notifications /org/freedesktop/Notifications | less -SRM +%
+$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.DBus.Peer GetMachineId
+#       call SERVICE                       OBJECT                         INTERFACE                     METHOD [SIGNATURE      [ARGUMENT...]                                  ]
+$BUSCTL call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.Notifications Notify "susssasa{sv}i" "app_name" 0 "app_icon" "summary" "body" 0 0 0
+unset -v BUSCTL
+```
+
+org.freedesktop.resolve1
+
+```bash
+su -
+# input password
+BUSCTL="busctl --system --no-pager"
+SERVICE="org.freedesktop.resolve1"
+OBJECT="/org/freedesktop/resolve1"
+INTERFACE="org.freedesktop.resolve1.Manager"
+METHOD="SetLinkDNS"
+$BUSCTL tree $SRV
+$BUSCTL introspect $SERVICE $OBJECT | less -SRM +%
+$BUSCTL --xml-interface introspect $SERVICE $OBJECT | less -SRM +%
+$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   1   2 4 192 168 1 1
+$BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   2   2 4 8 8 8 8       2 4 8 8 4 4
+```
+

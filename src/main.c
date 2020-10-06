@@ -38,14 +38,15 @@ static inline pid_t start_badvpn(){
     // Parent branch
     // f is child pid
     assert(1000==geteuid());
-    printf("starting badvpn-tun2socks %d log \'%s\'\n",f,TUN_LOG);
+    printf("starting badvpn-tun2socks %d\n",f);
     return f;
   }else{
     // Child branch
+    // https://stackoverflow.com/a/1777294/
     assert(1000==geteuid());
     assert(f==0);
-    // (2/2) Semaphore
     try_unlink(TUN_LOG);
+    printf("badvpn-tun2socks running, log \'%s\'\n",TUN_LOG);
     // int fd=create(TUN_LOG,0644);
     int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC,0644);
     // int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC|O_DIRECT|O_SYNC,0644);
@@ -100,11 +101,9 @@ void reset(){
 }
 
 void read_r(){
-  // (1/2) Semaphore
-  // printf("? ");fflush(stdout);
-  sleep(1);
-  printf("<Press Enter to Terminate> ");
+  printf("<Press Enter to Terminate> ");fflush(stdout);
   char s[SZ]={};
+  // sleep(1);
   assert(s==fgets(s,SZ,stdin));
 }
 
@@ -143,6 +142,7 @@ int main(const int argc,const char **argv){
   pid_t f=start_badvpn();
 
   // Impossible to know when badvpn-tun2socks becomes ready for SIGINT without inspecting its code
+  // status_*() doesn't work between processes
   sleep(1);
   read_r();
 

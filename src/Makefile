@@ -31,14 +31,26 @@ convert:convert.c
 
 ###
 
-restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 bus.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libsystemd)
+ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
 proc.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libprocps)
 profile.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c shadowsocks-libev)
-ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
+restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
 shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 
-clash_tun.out:main.o profile.o resolv.o shadowsocks.o restful.o netlink.o privilege.o ioctl.o proc.o file.o bus.o
+clash_tun.out: \
+	bus.o \
+	file.o \
+	ioctl.o \
+	main.o \
+	netlink.o \
+	privilege.o \
+	proc.o \
+	profile.o \
+	resolv.o \
+	restful.o \
+	shadowsocks.o \
+	status.o
 	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd libprocps libsystemd)
 
 ###
