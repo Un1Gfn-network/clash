@@ -1,5 +1,11 @@
 # clash_update Makefile
 
+ifneq ($(CURDIR),/home/darren/clash/clash_update)
+$(error )
+endif
+
+include ../Makefile.defs
+
 CONVERT:=/home/darren/.clash/bin/convert.out
 
 default:convert.c
@@ -9,5 +15,3 @@ default:convert.c
 
 clean:
 	@rm -fv $(CONVERT)
-
-include ../Makefile

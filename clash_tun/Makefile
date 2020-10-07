@@ -1,5 +1,11 @@
 # clash_tun Makefile
 
+ifneq ($(CURDIR),/home/darren/clash/clash_tun)
+$(error )
+endif
+
+include ../Makefile.defs
+
 DEST:=/usr/local/bin/clash_tun.out
 
 default:
@@ -35,8 +41,6 @@ shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 clean:
 	@rm -fv *.o *.out
 	@if [ -e $(DEST) ]; then sudo rm -fv $(DEST); else /bin/true; fi
-
-include ../Makefile
 
 ###
 
