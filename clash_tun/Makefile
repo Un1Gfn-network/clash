@@ -1,12 +1,14 @@
 # clash_tun Makefile
 
+DEST:=/usr/local/bin/clash_tun.out
+
 default:
 	@$(MAKE) clean
 	@$(MAKE) install
 
 install:clash_tun.out
 	@sudo rm -fv /usr/local/bin/$<
-	@sudo install -groot -m755 -oroot -v $< /usr/local/bin/$<
+	@sudo install -groot -m755 -oroot -v $< $(DEST)
 
 clash_tun.out: \
 	bus.o \
@@ -31,7 +33,8 @@ restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cfla
 shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
 
 clean:
-	@rm -v *.o *.out
+	@rm -fv *.o *.out
+	@if [ -e $(DEST) ]; then sudo rm -fv $(DEST); else /bin/true; fi
 
 include ../Makefile
 
