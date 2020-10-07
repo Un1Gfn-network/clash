@@ -309,6 +309,14 @@ int main(){
     Node node={};
 
     extract_value_with_key("name",node.name);
+    if(
+      strstr(node.name,"回國")||strstr(node.name,"中國標準 BGP 邊緣")||
+      strstr(node.name,"回国")||strstr(node.name,"中国标准 BGP 边缘")
+    ){
+      eprintf("drop cn node %s\n",node.name);
+      skip_node();
+      continue;
+    }
     char type[8]={};
     extract_value_with_key("type",type);
     if(0!=strcmp("ss",type)){
