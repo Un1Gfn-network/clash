@@ -1,42 +1,12 @@
-###
+# clash_tun Makefile
 
 default:
-	$(MAKE) clean
-	$(MAKE) convert
-	$(MAKE) install
+	@$(MAKE) clean
+	@$(MAKE) install
 
-clean:
-	@rm -fv *.out *.o
-
-install: clash_tun.out
-	sudo rm -fv /usr/local/bin/$<
-	sudo install -groot -m755 -oroot -v $< /usr/local/bin/$<
-
-###
-
-CC::=gcc
-
-CFLAGS::=-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -D_GNU_SOURCE -pthread # -fmax-errors=1
-
-%.o: %.c
-	$(CC) -c $(CFLAGS) $(CFLAGS_EXTRA) -o $@ $<
-
-###
-
-CONVERT::=/home/darren/.clash/bin/convert.out
-convert:convert.c
-	@rm -fv $(CONVERT)
-	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(CONVERT) $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
-	ls -lh $(CONVERT)
-
-###
-
-bus.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libsystemd)
-ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
-proc.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libprocps)
-profile.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c shadowsocks-libev)
-restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
-shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
+install:clash_tun.out
+	@sudo rm -fv /usr/local/bin/$<
+	@sudo install -groot -m755 -oroot -v $< /usr/local/bin/$<
 
 clash_tun.out: \
 	bus.o \
@@ -52,6 +22,18 @@ clash_tun.out: \
 	shadowsocks.o \
 	status.o
 	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd libprocps libsystemd)
+
+bus.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libsystemd)
+ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)
+proc.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libprocps)
+profile.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags yaml-0.1 json-c shadowsocks-libev)
+restful.o: CFLAGS_EXTRA:=$(shell curl-config --cflags) $(shell pkg-config --cflags json-c)
+shadowsocks.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags shadowsocks-libev)
+
+clean:
+	@rm -v *.o *.out
+
+include ../Makefile
 
 ###
 

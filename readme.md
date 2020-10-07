@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 # clash_tun
 
 ## Todo
@@ -23,6 +14,8 @@ proc.c - inspect_proc() - wait till clash is dead
 * [netlink](https://bewareofgeek.livejournal.com/2945.html)
 
 main.c - start_badvpn() - enforce print order btw child & parent proc w/ semaphore
+
+[Makefile - Managing Large Projects](https://www.oreilly.com/library/view/managing-projects-with/0596006101/ch06.html)
 
 ## Misc
 
