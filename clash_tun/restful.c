@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "./restful.h"
+#include "../restful_port.h"
 
 static char *buf=NULL;
 static size_t sz=0;
@@ -101,7 +102,7 @@ char *current_server_title(){
   assert(tok);
 
   json_tokener_reset(tok);
-  json_object *jobj=json_tokener_parse_ex(tok,curl_get("http://127.0.0.1:6170/proxies/GLOBAL"),-1);
+  json_object *jobj=json_tokener_parse_ex(tok,curl_get("http://127.0.0.1:"RESTFUL_PORT"/proxies/GLOBAL"),-1);
   assert(jobj);
   enum json_tokener_error jerr=json_tokener_get_error(tok);
   if(jerr!=json_tokener_success){

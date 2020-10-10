@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <yaml.h>
 
+#include "../restful_port.h"
+
 #define SZ 128
 // #define FILENAME "/home/darren/yaml/01_rixcloud.yaml"
 // #define FILENAME "/home/darren/yaml/01_ssrcloud.yaml"
@@ -101,7 +103,7 @@ void emitter_begin(){
     "allow-lan","true",
     "mode","Global",
     "log-level","info",
-    "external-controller","127.0.0.1:7892", // yacd updated defaults
+    "external-controller","127.0.0.1:"RESTFUL_PORT, // yacd updated defaults
     // "external-controller","\'127.0.0.1:6170\'",
     "secret","",
     NULL
