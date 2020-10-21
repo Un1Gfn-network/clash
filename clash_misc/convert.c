@@ -43,6 +43,7 @@ char global_port[8]={};
 GSList *hk=NULL;
 GSList *jp=NULL;
 GSList *kr=NULL;
+GSList *mo=NULL;
 GSList *sg=NULL;
 GSList *tw=NULL;
 GSList *us=NULL;
@@ -62,6 +63,8 @@ void group(const char *const s0){
     jp=g_slist_prepend(jp,s);
   else if(strstr(s,"韓國")||strstr(s,"韓国")||strstr(s,"韩国"))
     kr=g_slist_prepend(kr,s);
+  else if(strstr(s,"澳門")||strstr(s,"澳门"))
+    mo=g_slist_prepend(mo,s);
   else if(strstr(s,"新加坡"))
     sg=g_slist_prepend(sg,s);
   else if(strstr(s,"臺灣")||strstr(s,"台灣")||strstr(s,"台湾"))
@@ -369,6 +372,7 @@ int main(){
   emit_and_destroy_group("HK",hk);hk=NULL;
   emit_and_destroy_group("JP",jp);jp=NULL;
   emit_and_destroy_group("KR",kr);kr=NULL;
+  emit_and_destroy_group("MO",mo);mo=NULL;
   emit_and_destroy_group("SG",sg);sg=NULL;
   emit_and_destroy_group("TW",tw);tw=NULL;
   emit_and_destroy_group("US",us);us=NULL;
