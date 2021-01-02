@@ -110,13 +110,16 @@ void read_r(){
 int main(const int argc,const char **argv){
   privilege_drop();
 
-  assert(
-    argc==2 &&
-    argv[1] &&
-    (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
-  );
+  // assert(
+  //   argc==2 &&
+  //   argv[1] &&
+  //   (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
+  // );
+  // char *yaml_path=provider2path(argv[1]);
 
-  char *yaml_path=provider2path(argv[1]);
+  assert(argc==1&&argv[1]==NULL);
+  char *yaml_path=provider2path("ssrcloud");
+
   char *server_title=current_server_title();
   printf("\'%s\'\n",server_title);
   yaml2profile(yaml_path,server_title);

@@ -1,4 +1,7 @@
 #!/bin/bash -e
+# (1) Edit this file in /home/darren/clash/clash_misc/clash.sh
+# (2) make clean
+# (3) make install_sh
 
 # Deps
 # pacman -Syu --needed unzip wget
@@ -13,7 +16,7 @@ yCdir="/home/darren/.clash/yC"
 
 source /home/darren/.clash/uri.rc
 test -n "$ssrcloud_uri"
-test -n "$rixcloud_uri"
+# test -n "$rixcloud_uri"
 
 function clear_tmp {
   pushd /tmp
@@ -35,6 +38,9 @@ trap handler SIGINT
 cd /tmp
 
 if [ "$(basename "$0")" = "clash_run" ]; then
+
+  test "$#" -eq 0
+  set -- "ssrcloud"
 
   # Prepare
   if [ "$#" -ne 1 ]; then
@@ -91,7 +97,8 @@ if [ "$(basename "$0")" = "clash_update" ]; then
 
   fi
 
-  if [[ "$1" = "rixcloud" || "$1" = "ssrcloud" ]]; then
+  # if [[ "$1" = "rixcloud" || "$1" = "ssrcloud" ]]; then
+  if [[ "$1" = "ssrcloud" ]]; then
 
     uri="$1_uri"
 
