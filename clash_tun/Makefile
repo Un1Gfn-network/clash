@@ -6,16 +6,6 @@ endif
 
 include ../Makefile.defs
 
-DEST:=/usr/local/bin/clash_tun.out
-
-default:
-	@$(MAKE) clean
-	@$(MAKE) install
-
-install:clash_tun.out
-	@sudo rm -fv /usr/local/bin/$<
-	@sudo install -groot -m755 -oroot -v $< $(DEST)
-
 clash_tun.out: \
 	bus.o \
 	file.o \
@@ -30,6 +20,8 @@ clash_tun.out: \
 	shadowsocks.o \
 	status.o
 	$(CC) $(CFLAGS) -o $@ $^ -pthread $(shell curl-config --libs) $(shell pkg-config --libs json-c yaml-0.1 shadowsocks-libev libbsd libprocps libsystemd)
+	@sudo rm -fv /usr/local/bin/$@
+	@sudo install -groot -m755 -oroot -v $@ /usr/local/bin/$@
 
 bus.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libsystemd)
 ioctl.o: CFLAGS_EXTRA:=$(shell pkg-config --cflags libbsd)

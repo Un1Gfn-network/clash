@@ -1,82 +1,93 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "./resolv.h"
 
+#define common23(IT,P,RET) assert( !(IT->ai_canonname) && strcmp(RET,inet_ntoa(P->sin_addr))==0 )
+
+const struct sockaddr_in *common123(const struct addrinfo *const it){
+  assert(
+    it->ai_flags==AI_CANONNAME &&
+    it->ai_family==AF_INET &&
+    it->ai_addrlen==sizeof(struct sockaddr_in) &&
+    it->ai_addr
+  );
+  const struct sockaddr_in *const p=(const struct sockaddr_in *)(it->ai_addr); // ip(7)
+  assert(
+    p->sin_family==AF_INET &&
+    p->sin_port==0 &&
+    p->sin_addr.s_addr!=0
+  );
+  return p;
+}
+
+
 char *resolv(const char *domain){
 
+  // Load
+  assert(domain);
   struct addrinfo *res=NULL;
-
-  struct addrinfo hints={
+  const int errcode=getaddrinfo(domain,NULL,&(struct addrinfo){
     .ai_flags=AI_CANONNAME,
     .ai_family=AF_INET
-  };
-
-  const int errcode=getaddrinfo(domain,NULL,&hints,&res);
+  },&res);
   if(errcode!=0){
     printf("%s\n",gai_strerror(errcode));
-    assert(0);
+    assert(false);
   }
 
+  // First
   const struct addrinfo *it=res;
-  char *ret=NULL;
+  const struct sockaddr_in *const p1=common123(it);
+  assert(
+    it->ai_socktype==SOCK_STREAM &&  // netinet_in.h(0p)
+    it->ai_protocol==IPPROTO_TCP &&
+    it->ai_canonname
+  );
+  char *const ret=strdup(inet_ntoa(p1->sin_addr));
+  assert(ret);
+  printf("%s(%s) -> %s\n",domain,it->ai_canonname,ret);
 
-  for(int i=0;i<=1;++i,it=it->ai_next){
+  // Second
+  it=it->ai_next;
+  const struct sockaddr_in *const p2=common123(it);
+  common23(it,p2,ret);
+  assert(
+    it->ai_socktype==SOCK_DGRAM && // netinet_in.h(0p)
+    it->ai_protocol==IPPROTO_UDP
+  );
 
-    assert(it->ai_flags==AI_CANONNAME);
-    assert(it->ai_family==AF_INET);
-    if(i==0){
-      assert(it->ai_socktype==SOCK_STREAM);
-      assert(it->ai_protocol==IPPROTO_TCP); // netinet_in.h(0p)
-    }else{
-      assert(it->ai_socktype==SOCK_DGRAM);
-      assert(it->ai_protocol==IPPROTO_UDP); // netinet_in.h(0p)
-    }
+  // Third
+  it=it->ai_next;
+  const struct sockaddr_in *const p3=common123(it);
+  common23(it,p3,ret);
+  assert(
+    it->ai_socktype==SOCK_RAW && // netinet_in.h(0p)
+    it->ai_protocol==IPPROTO_IP
+  );
 
-    assert(it->ai_addrlen==sizeof(struct sockaddr_in));
-    assert(it->ai_addr);
+  // printf("%d ",it->ai_socktype); // SOCK_DGRAM=2 SOCK_RAW=3
+  // printf("%d ",it->ai_protocol); // IPPROTO_UDP=17 IPPROTO_IP=0
+  // printf("%p ",it->ai_canonname);
+  // printf("%s ",inet_ntoa(p->sin_addr));
+  // printf("\n");
 
-    // ip(7)
-    const struct sockaddr_in *p=(struct sockaddr_in *)(it->ai_addr);
-    assert(p->sin_family==AF_INET);
-    assert(p->sin_port==0);
-    assert(p->sin_addr.s_addr!=0);
-    if(!ret)
-      assert((ret=strdup(inet_ntoa(p->sin_addr))));
-    else
-      assert(0==strcmp(ret,inet_ntoa(p->sin_addr)));
-    assert(ret);
-
-    if(i==0){
-      assert(it->ai_canonname);
-      assert(0==strcmp(domain,it->ai_canonname));
-    }else{
-      assert(it->ai_canonname==NULL);
-    }
-
-  }
-
+  // Cleanup
   assert(it->ai_next==NULL);
-
   freeaddrinfo(res);
   res=NULL;
-
   return ret;
 
 }
 
 /*int main(){
-
-  char *ip=resolv("hk19.edge.bgp.app"); // "jp5.edge.as4809.app"
-  assert(ip);
-  printf("%s\n",ip);
-  free(ip);
-  ip=NULL;
-
+  free(resolv("hk19.edge.bgp.app"));
+  free(resolv("sghk03.clashcloud.org"));
+  free(resolv("sg23.clashcloud.org"));
   return 0;
-
 }*/

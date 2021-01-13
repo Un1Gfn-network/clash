@@ -81,6 +81,7 @@ void set(){
   netlink_up(TUN);
 
   netlink_get_gateway(gw);
+  printf("replacing gateway %s\n",gw);
   netlink_del_gateway(WLO,gw);
   netlink_add_gateway(TUN,"10.0.0.2");
 
@@ -93,6 +94,7 @@ void reset(){
   netlink_del_route(WLO,profile.remote_host,gw);
 
   netlink_del_gateway(TUN,"10.0.0.2");
+  printf("recovering gateway %s\n",gw);
   netlink_add_gateway(WLO,gw);
 
   netlink_down(TUN);
@@ -106,6 +108,13 @@ void read_r(){
   // sleep(1);
   assert(s==fgets(s,SZ,stdin));
 }
+
+/*int main(){
+  netlink_init();
+  netlink_get_gateway(gw);
+  printf("%s\n",gw);
+  netlink_end();
+}*/
 
 int main(const int argc,const char **argv){
   privilege_drop();

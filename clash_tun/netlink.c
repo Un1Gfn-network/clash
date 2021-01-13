@@ -366,7 +366,7 @@ void netlink_get_gateway(char *const s){
         case RTA_GATEWAY:
           // gw=*(struct in_addr*)RTA_DATA(rta);
           assert(s==inet_ntop(AF_INET,RTA_DATA(rta),s,INET_ADDRSTRLEN));
-          assert(0==strcmp(s,"192.168.1.1"));
+          // assert(0==strcmp(s,"192.168.1.1"));
           break;
         case RTA_OIF:
           assert(3==*((int*)RTA_DATA(rta)));
@@ -374,7 +374,11 @@ void netlink_get_gateway(char *const s){
         case RTA_PREFSRC:
           break;
         case RTA_PRIORITY:
-          assert(303==*((int*)RTA_DATA(rta)));
+          // printf("metric %d\n",*((int*)RTA_DATA(rta)));
+          assert(
+            *((int*)RTA_DATA(rta))==303||
+            *((int*)RTA_DATA(rta))==3003
+          );
           break;
         case RTA_TABLE:
           assert(RT_TABLE_MAIN==*((int*)RTA_DATA(rta)));
