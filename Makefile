@@ -11,7 +11,6 @@ SUBDIRS=$(patsubst %/,%,$(wildcard clash_*/))
 
 default:$(SUBDIRS)
 $(SUBDIRS):
-	@echo
 	$(MAKE) --directory=$@
 
 CLEAN=$(addprefix clean_,$(SUBDIRS))

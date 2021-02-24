@@ -11,23 +11,29 @@ BIN:=/home/darren/.clash/bin
 .PHONY:install_convert install_sh clean
 
 default:
-	@$(MAKE) clean
-	@$(MAKE) install_convert
 	@$(MAKE) install_sh
+	@$(MAKE) install_convert
 
-install_convert:convert.c ../restful_port.h
-	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(BIN)/convert.out $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
-	@realpath --canonicalize-existing $(BIN)/convert.out
+# "make install_sh" instead of "make /home/darren/.clash/bin/clash.sh" for CLI invocation
+install_sh: $(BIN)/clash.sh
 
-install_sh:
-	shellcheck -x clash.sh || /bin/true
+$(BIN)/clash.sh: clash.sh
+	shellcheck -x $^ || /bin/true
 	@echo
-	@cp -v clash.sh $(BIN)/clash.sh
-	@echo
+	@cp -vf clash.sh $(BIN)/clash.sh
 	@:; \
 		cd $(BIN); \
 		ln -sfv clash.sh clash_run; \
 		ln -sfv clash.sh clash_update
+	@echo
+
+# "make install_convert" instead of "make /home/darren/.clash/bin/convert.out" for CLI invocation
+install_convert: $(BIN)/convert.out
+
+$(BIN)/convert.out: convert.c ../restful_port.h
+	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(BIN)/convert.out $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
+	@echo
+	@realpath --canonicalize-existing $(BIN)/convert.out
 	@echo
 
 clean:
