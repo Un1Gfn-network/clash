@@ -9,9 +9,12 @@
 #include <stdio.h>
 #include <yaml.h>
 
+// 7892 -> 9090
 #include "../restful_port.h"
 
-#define SZ 128
+#define SZ        128
+#define SZ_CIPHER  64
+#define SZ_PORT     8
 // #define FILENAME "/home/darren/yaml/01_rixcloud.yaml"
 // #define FILENAME "/home/darren/yaml/01_ssrcloud.yaml"
 
@@ -30,34 +33,47 @@
 FILE *file=NULL;
 #endif
 
-yaml_parser_t parser={};
-yaml_token_t token={};
+static yaml_parser_t parser={};
+static yaml_token_t token={};
 
-yaml_emitter_t emitter={};
-yaml_event_t event={};
+static yaml_emitter_t emitter={};
+static yaml_event_t event={};
 
-char global_password[SZ]={};
-char global_cipher[64]={};
-char global_port[8]={};
+static GSList *eu=NULL;
+static GSList *hk=NULL;
+static GSList *jp=NULL;
+static GSList *kr=NULL;
+static GSList *mo=NULL;
+static GSList *na=NULL;
+static GSList *sg=NULL;
+static GSList *tw=NULL;
+static GSList *xx=NULL;
 
-GSList *hk=NULL;
-GSList *jp=NULL;
-GSList *kr=NULL;
-GSList *mo=NULL;
-GSList *sg=NULL;
-GSList *tw=NULL;
-GSList *us=NULL;
-GSList *xx=NULL;
+// Common
+static char plain_port[SZ_PORT]={};
+static char plain_cipher[SZ_CIPHER]={};
+static char plain_password[SZ]={};
 
+// Common
+// static char obfs_port[SZ_PORT]={};
+// static char obfs_cipher[SZ_CIPHER]={};
+// static char obfs_host[SZ]={};
+
+// Unique
 typedef struct _Node {
+  bool obfs;
   char name[SZ];
-  char server[32];
+  char server[SZ];
 } Node;
 
-void group(const char *const s0){
+static void group(const char *const s0){
   char *s=calloc(SZ,sizeof(char));
   strcpy(s,s0);
-  if(strstr(s,"香港"))
+  if(false)
+    ;
+  else if(strstr(s,"荷蘭")||strstr(s,"荷兰")||strstr(s,"德國")||strstr(s,"德国"))
+    eu=g_slist_prepend(eu,s);
+  else if(strstr(s,"港"))
     hk=g_slist_prepend(hk,s);
   else if(strstr(s,"日本")||strcasestr(s,"ntt"))
     jp=g_slist_prepend(jp,s);
@@ -65,17 +81,17 @@ void group(const char *const s0){
     kr=g_slist_prepend(kr,s);
   else if(strstr(s,"澳門")||strstr(s,"澳门"))
     mo=g_slist_prepend(mo,s);
+  else if(strstr(s,"美國")||strstr(s,"美国")||strstr(s,"加拿大"))
+    na=g_slist_prepend(na,s);
   else if(strstr(s,"新加坡"))
     sg=g_slist_prepend(sg,s);
   else if(strstr(s,"臺灣")||strstr(s,"台灣")||strstr(s,"台湾"))
     tw=g_slist_prepend(tw,s);
-  else if(strstr(s,"美國")||strstr(s,"美国"))
-    us=g_slist_prepend(us,s);
   else
     xx=g_slist_prepend(xx,s);
 }
 
-void emit_scalar(const char *s,...){
+static void emit_scalar(const char *s,...){
   va_list vl;
   va_start(vl,s);
   while(s!=NULL){
@@ -84,7 +100,7 @@ void emit_scalar(const char *s,...){
   }
 }
 
-void emitter_begin(){
+static void emitter_begin(){
   // Init
   yaml_emitter_initialize(&emitter);
   yaml_emitter_set_output_file(&emitter,stdout);
@@ -113,7 +129,7 @@ void emitter_begin(){
   );
 }
 
-void emitter_end(){
+static void emitter_end(){
   MAP_END();
   yaml_document_end_event_initialize(&event,1);
   EMIT();
@@ -123,7 +139,7 @@ void emitter_end(){
   emitter=(yaml_emitter_t){};
 }
 
-/*void type(const yaml_token_type_t t){
+/*static void type(const yaml_token_type_t t){
   switch(t){
     case YAML_NO_TOKEN:eprintf("YAML_NO_TOKEN\n");break;
     case YAML_STREAM_START_TOKEN:eprintf("YAML_STREAM_START_TOKEN\n");break;
@@ -151,13 +167,13 @@ void emitter_end(){
   }
 }*/
 
-void assert_token_type(yaml_token_type_t tt){
+static void assert_token_type(yaml_token_type_t tt){
   SCAN();
   assert(token.type==tt);
   DEL();
 }
 
-void parser_begin(){
+static void parser_begin(){
 
   yaml_parser_initialize(&parser);
   yaml_parser_set_encoding(&parser,YAML_UTF8_ENCODING);
@@ -192,7 +208,7 @@ void parser_begin(){
 
 }
 
-void parser_end(){
+static void parser_end(){
 
   yaml_parser_delete(&parser);
   parser=(yaml_parser_t){};
@@ -204,7 +220,7 @@ void parser_end(){
 
 }
 
-void extract_value_with_key(const char *const k,char *v){
+static void extract_value_with_key(const char *const k,char *v){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
@@ -217,7 +233,7 @@ void extract_value_with_key(const char *const k,char *v){
   DEL();
 }
 
-void assert_value_with_key(const char *const k,const char *const v0){
+static void assert_value_with_key(const char *const k,const char *const v0){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
@@ -230,33 +246,63 @@ void assert_value_with_key(const char *const k,const char *const v0){
   DEL();
 }
 
-void skip_node(){
+/*static void skip_node(){
+  bool test=false;
   for(;;){
     SCAN();
+    type(token.type);
+    if(token.type==YAML_BLOCK_MAPPING_START_TOKEN){
+      for(int i=0;i<20;++i){
+        DEL();
+        SCAN();
+        type(token.type);
+      }
+      assert(false);
+    }
     if(token.type==YAML_BLOCK_END_TOKEN){
       DEL();
       break;
     }
     DEL();
   }
+}*/
+
+
+// lean: Expected n(YAML_BLOCK_END_TOKEN) - n(YAML_BLOCK_MAPPING_START_TOKEN)
+static void skip_node(int lean){
+  for(;;){
+    SCAN();
+    if(token.type==YAML_BLOCK_MAPPING_START_TOKEN)
+      ++lean;
+    if(token.type==YAML_BLOCK_END_TOKEN){
+      if(lean==0){
+        DEL();
+        break;
+      }
+      assert(lean>=1);
+      --lean;
+    }
+    DEL();
+  }
 }
 
-void emit_node(Node *n){
+static void emit_node(Node *n){
+  assert(!(n->obfs));
   MAP_START();
   emit_scalar(
     "name",n->name,
     "type","ss",
     "server",n->server,
-    "port",global_port,
-    "cipher",global_cipher,
-    "password",global_password,
+    "port",plain_port,
+    "cipher",plain_cipher,
+    "password",plain_password,
     "udp","true",
     NULL
   );
   MAP_END();
 }
 
-void emit_and_destroy_group(const char *const title,GSList *l){
+static void emit_and_destroy_group(const char *const title,GSList *l){
 
   if(!l){
     eprintf("skip empty group %s\n",title);
@@ -299,8 +345,11 @@ int main(){
   SCALAR("proxies");
 
   SEQ_START();
+  // eprintf("A\n");
 
   for(;;){
+
+    // eprintf("B\n");
 
     // If sequence has ended
     SCAN();
@@ -319,44 +368,85 @@ int main(){
       strstr(node.name,"回国")||strstr(node.name,"中国标准 BGP 边缘")
     ){
       eprintf("drop cn node %s\n",node.name);
-      skip_node();
+      skip_node(0);
       continue;
     }
     char type[8]={};
     extract_value_with_key("type",type);
     if(0!=strcmp("ss",type)){
       eprintf("drop %s node %s\n",type,node.name);
-      skip_node();
+      skip_node(0);
       continue;
     }
     extract_value_with_key("server",node.server);
     if(1==inet_pton(AF_INET6,node.server,&((struct in6_addr){}))){
       eprintf("drop IPv6 node %s %s\n",node.name,node.server);
-      skip_node();
+      skip_node(0);
       continue;
     }
     if(0==strcmp("127.0.0.1",node.server)){
       eprintf("drop loopback node %s\n",node.name);
-      skip_node();
+      skip_node(0);
       continue;
     }
-    if(0==strlen(global_port)&&0==strlen(global_cipher)&&0==strlen(global_password)){
-      extract_value_with_key("port",global_port);
-      extract_value_with_key("cipher",global_cipher);
-      extract_value_with_key("password",global_password);
-      eprintf("port %s\n",global_port);
-      eprintf("cipher %s\n",global_cipher);
-      eprintf("password %s\n",global_password);
-    }else if(3<=strlen(global_port)&&3<=strlen(global_cipher)&&3<=strlen(global_password)){
-      assert_value_with_key("port",global_port);
-      assert_value_with_key("cipher",global_cipher);
-      assert_value_with_key("password",global_password);
-    }else{
-      assert(false);
-    }
+
+    char port[SZ_PORT]={};
+    char cipher[SZ_CIPHER]={};
+    char password[SZ]={};
+    extract_value_with_key("port",port);
+    extract_value_with_key("cipher",cipher);
+    extract_value_with_key("password",password);
+
     assert_value_with_key("udp","true");
 
-    assert_token_type(YAML_BLOCK_END_TOKEN);
+    SCAN();
+
+    // Plain
+    if(token.type==YAML_BLOCK_END_TOKEN){
+
+      node.obfs=false;
+      if(0==strlen(plain_port)&&0==strlen(plain_cipher)&&0==strlen(plain_password)){
+        strcpy(plain_port,port);
+        strcpy(plain_cipher,cipher);
+        strcpy(plain_password,password);
+        eprintf("\n");
+        eprintf("plain port     - %s\n",plain_port);
+        eprintf("plain cipher   - %s\n",plain_cipher);
+        eprintf("plain password - %s\n",plain_password);
+        eprintf("\n");
+      }else if(3<=strlen(plain_port)&&3<=strlen(plain_cipher)&&3<=strlen(plain_password)){
+        assert(0==strcmp(port,plain_port));
+        assert(0==strcmp(cipher,plain_cipher));
+        assert(0==strcmp(password,plain_password));
+      }else{
+        assert(false);
+      }
+
+    // Obfs
+    }else if(token.type==YAML_KEY_TOKEN){
+
+      eprintf("drop obfs node %s %s\n",node.name,node.server);
+      skip_node(0);
+      continue;
+
+      // node.obfs=true;
+
+      // assert(0==strcmp(password,"CNIX"));
+
+      // eprintf("\n");
+      // eprintf("obfs cipher - %s\n",obfs_cipher);
+      // eprintf("obfs port   - %s\n",obfs_port);
+      // eprintf("obfs host   - %s\n",obfs_host);
+      // eprintf("\n");
+
+    // Error
+    }else{
+
+      assert(false);
+
+    }
+
+    DEL();
 
     group(node.name);
     emit_node(&node);
@@ -369,13 +459,14 @@ int main(){
 
   SEQ_START();
 
+  emit_and_destroy_group("EU",eu);eu=NULL;
   emit_and_destroy_group("HK",hk);hk=NULL;
   emit_and_destroy_group("JP",jp);jp=NULL;
   emit_and_destroy_group("KR",kr);kr=NULL;
   emit_and_destroy_group("MO",mo);mo=NULL;
+  emit_and_destroy_group("NA",na);na=NULL;
   emit_and_destroy_group("SG",sg);sg=NULL;
   emit_and_destroy_group("TW",tw);tw=NULL;
-  emit_and_destroy_group("US",us);us=NULL;
   emit_and_destroy_group("XX",xx);xx=NULL;
 
   SEQ_END();

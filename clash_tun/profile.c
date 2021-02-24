@@ -46,14 +46,14 @@ profile_t profile={
   // .acl
   // .mtu
   // .mptcp
-  // .verbose
 
   // Immutable
   .local_addr=LOCAL_ADDR,
   .local_port=LOCAL_PORT_I,
   .log=SS_LOG,
   .fast_open=1,
-  .mode=1
+  .mode=1,
+  .verbose=1
 
   // Mutable
   // .remote_host // S0
@@ -75,13 +75,13 @@ bool profile_loaded(){
     (!profile.acl) &&
     profile.mtu==0 &&
     profile.mptcp==0 &&
-    profile.verbose==0 &&
     // Immutable
     profile.local_addr && 0==strcmp(LOCAL_ADDR,profile.local_addr) &&
     profile.local_port==LOCAL_PORT_I &&
     profile.log && 0==strcmp(profile.log,SS_LOG) &&
     profile.fast_open==1 &&
-    profile.mode==1
+    profile.mode==1 &&
+    profile.verbose==1
   );
   // Mutable
   if(S0){
