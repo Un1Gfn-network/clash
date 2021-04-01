@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <yaml.h>
 
+// Country flag emoji unicode literal
+#include <wchar.h>
+#include <locale.h>
+
 // 7892 -> 9090
 #include "../restful_port.h"
 
@@ -30,7 +34,7 @@
 #define LAMBDA(X) ({ X f;})
 
 #ifdef FILENAME
-FILE *file=NULL;
+static FILE *file=NULL;
 #endif
 
 static yaml_parser_t parser={};
@@ -43,7 +47,7 @@ static GSList *eu=NULL;
 static GSList *hk=NULL;
 static GSList *jp=NULL;
 static GSList *kr=NULL;
-static GSList *mo=NULL;
+// static GSList *mo=NULL;
 static GSList *na=NULL;
 static GSList *sg=NULL;
 static GSList *tw=NULL;
@@ -66,6 +70,71 @@ typedef struct _Node {
   char server[SZ];
 } Node;
 
+// https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+// https://en.wikipedia.org/wiki/Country_code
+typedef struct {
+  char c[2];
+} CC;
+
+typedef struct {
+  wchar_t wcs[2+1];
+} FlagWCS;
+
+// https://en.wikipedia.org/wiki/UTF-8#Encoding
+// U+10000...U+10FFFF 4-byte
+typedef struct {
+  char mbs[4+4+1];
+} FlagMBS;
+
+// https://en.wikipedia.org/wiki/Regional_indicator_symbol
+// wchar_t aka int
+static wchar_t c2ris(const char c){
+  assert('A'<=c&&c<='Z');
+  // wchar_t ris_A=L'\U0001F1E6';
+  // const wchar_t ris_Z=L'\U0001F1FF';
+  // assert((ris_Z-ris_A)==('Z'-'A'));
+  #define RIS_A (L'\U0001F1E6')
+  #define RIS_Z (L'\U0001F1FF')
+  static_assert((RIS_Z-RIS_A)==('Z'-'A'));
+  wchar_t r=(wchar_t)RIS_A+(wchar_t)(c-'A');
+  assert(RIS_A<=r&&r<=RIS_Z);
+  return r;
+}
+
+static void cc2wcs(FlagWCS *const dest, const CC *const src){
+  *dest=(FlagWCS){.wcs={
+    [0]=c2ris((src->c)[0]),
+    [1]=c2ris((src->c)[1]),
+    [2]=L'\0'
+  }};
+  // dest->wcs[0]=c2ris((src->c)[0]);
+  // dest->wcs[1]=c2ris((src->c)[1]);
+  // dest->wcs[2]=L'\0';
+}
+
+static void wcs2mbs(FlagMBS *const dest, const FlagWCS *const src){
+  // Non-restartable
+  assert(8==wcstombs(NULL,src->wcs,0));
+  assert(8==wcstombs(dest->mbs,src->wcs,9));
+  // Restartable
+  // const wchar_t *p=src->wcs;
+  // mbstate_t t={};
+  // assert(1==mbsinit(&t));
+  // assert(8==wcsrtombs(NULL,&p,0,&t));
+  // assert(1==mbsinit(&t));
+  // assert(p==src->wcs);
+  // assert(8==wcsrtombs(dest->mbs,&p,9,&t));
+  // assert(1==mbsinit(&t));
+  // assert(p==NULL);
+  assert(dest->mbs[8]=='\0');
+}
+
+static void cc2wcs2mbs(FlagMBS *const dest, const CC *const src){
+  FlagWCS w={};
+  cc2wcs(&w,src);
+  wcs2mbs(dest,&w);
+}
+
 static void group(const char *const s0){
   char *s=calloc(SZ,sizeof(char));
   strcpy(s,s0);
@@ -79,8 +148,8 @@ static void group(const char *const s0){
     jp=g_slist_prepend(jp,s);
   else if(strstr(s,"韓國")||strstr(s,"韓国")||strstr(s,"韩国"))
     kr=g_slist_prepend(kr,s);
-  else if(strstr(s,"澳門")||strstr(s,"澳门"))
-    mo=g_slist_prepend(mo,s);
+  // else if(strstr(s,"澳門")||strstr(s,"澳门"))
+  //   mo=g_slist_prepend(mo,s);
   else if(strstr(s,"美國")||strstr(s,"美国")||strstr(s,"加拿大"))
     na=g_slist_prepend(na,s);
   else if(strstr(s,"新加坡"))
@@ -337,7 +406,27 @@ static void emit_and_destroy_group(const char *const title,GSList *l){
 
 }
 
+/*static void test(){
+
+  // FlagMBS m={};
+  // cc2wcs2mbs(&m,&(CC){"US"});
+
+  // assert(0==fwide(stdout,0));
+  // printf("%s\n",m.mbs);
+
+  // const wchar_t *name = L"r\u00e9sum\u00e9";
+  // const wchar_t *name = L"\U0001F1ED\U0001F1F0";
+  // wprintf(L"name is %ls\n",name);
+
+}*/
+
 int main(){
+
+  setlocale(LC_CTYPE,"en_US.UTF-8");
+
+  // test();
+  // eprintf("\n");
+  // exit(0);
 
   emitter_begin();
   parser_begin();
@@ -459,15 +548,26 @@ int main(){
 
   SEQ_START();
 
-  emit_and_destroy_group("EU",eu);eu=NULL;
-  emit_and_destroy_group("HK",hk);hk=NULL;
-  emit_and_destroy_group("JP",jp);jp=NULL;
-  emit_and_destroy_group("KR",kr);kr=NULL;
-  emit_and_destroy_group("MO",mo);mo=NULL;
-  emit_and_destroy_group("NA",na);na=NULL;
-  emit_and_destroy_group("SG",sg);sg=NULL;
-  emit_and_destroy_group("TW",tw);tw=NULL;
-  emit_and_destroy_group("XX",xx);xx=NULL;
+  
+  // emit_and_destroy_group("EU",eu);eu=NULL;
+  // emit_and_destroy_group("HK",hk);hk=NULL;
+  // emit_and_destroy_group("JP",jp);jp=NULL;
+  // emit_and_destroy_group("KR",kr);kr=NULL;
+  // emit_and_destroy_group("NA",na);na=NULL;
+  // emit_and_destroy_group("SG",sg);sg=NULL;
+  // emit_and_destroy_group("TW",tw);tw=NULL;
+  // emit_and_destroy_group("XX",xx);xx=NULL;
+
+  FlagMBS m={};
+  // cc2wcs2mbs(&m,&(CC){"MO"});emit_and_destroy_group(m.mbs,mo);mo=NULL;
+  cc2wcs2mbs(&m,&(CC){"HK"});emit_and_destroy_group(m.mbs,hk);hk=NULL;
+                              emit_and_destroy_group("NA",na);na=NULL;
+  cc2wcs2mbs(&m,&(CC){"JP"});emit_and_destroy_group(m.mbs,jp);jp=NULL;
+  cc2wcs2mbs(&m,&(CC){"TW"});emit_and_destroy_group(m.mbs,tw);tw=NULL;
+  cc2wcs2mbs(&m,&(CC){"KR"});emit_and_destroy_group(m.mbs,kr);kr=NULL;
+  cc2wcs2mbs(&m,&(CC){"SG"});emit_and_destroy_group(m.mbs,sg);sg=NULL;
+  cc2wcs2mbs(&m,&(CC){"EU"});emit_and_destroy_group(m.mbs,eu);eu=NULL;
+                              emit_and_destroy_group("XX",xx);xx=NULL;
 
   SEQ_END();
 

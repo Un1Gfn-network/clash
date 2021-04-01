@@ -106,6 +106,7 @@ if [ "$(basename "$0")" = "clash_update" ]; then
     echo
     echo -n "  Please download ${!uri} to /tmp/raw.yaml "
     read -r
+    echo
 
     cd /tmp
     convert.out <raw.yaml >config.yaml
