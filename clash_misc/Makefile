@@ -30,8 +30,8 @@ $(BIN)/clash.sh: clash.sh
 # "make install_convert" instead of "make /home/darren/.clash/bin/convert.out" for CLI invocation
 install_convert: $(BIN)/convert.out
 
-$(BIN)/convert.out: convert.c ../restful_port.h
-	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(BIN)/convert.out $< $(shell pkg-config --libs yaml-0.1 glib-2.0)
+$(BIN)/convert.out: flag.c flag.h convert.c ../restful_port.h
+	$(CC) $(CFLAGS) $(shell pkg-config --cflags yaml-0.1 glib-2.0) -o $(BIN)/convert.out $(filter %.c,$^) $(shell pkg-config --libs yaml-0.1 glib-2.0)
 	@echo
 	@realpath --canonicalize-existing $(BIN)/convert.out
 	@echo

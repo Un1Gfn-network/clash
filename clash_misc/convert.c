@@ -1,20 +1,18 @@
 // #define _GNU_SOURCE
 
-#include <string.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <gmodule.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <yaml.h>
-
-// Country flag emoji unicode literal
-#include <wchar.h>
-#include <locale.h>
 
 // 7892 -> 9090
 #include "../restful_port.h"
+#include "./flag.h"
 
 #define SZ        128
 #define SZ_CIPHER  64
@@ -46,7 +44,7 @@ static yaml_event_t event={};
 static GSList *l_asia=NULL;
 static GSList *l_jp=NULL;
 static GSList *l_ca_us=NULL;
-static GSList *l_eu_uk=NULL;
+static GSList *l_eu_gb=NULL;
 static GSList *l_stray=NULL;
 
 // Common
@@ -66,71 +64,6 @@ typedef struct _Node {
   char server[SZ];
 } Node;
 
-// https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
-// https://en.wikipedia.org/wiki/Country_code
-typedef struct {
-  char c[2];
-} CC;
-
-typedef struct {
-  wchar_t wcs[2+1];
-} FlagWCS;
-
-// https://en.wikipedia.org/wiki/UTF-8#Encoding
-// U+10000...U+10FFFF 4-byte
-typedef struct {
-  char mbs[4+4+1];
-} FlagMBS;
-
-// https://en.wikipedia.org/wiki/Regional_indicator_symbol
-// wchar_t aka int
-static wchar_t c2ris(const char c){
-  assert('A'<=c&&c<='Z');
-  // wchar_t ris_A=L'\U0001F1E6';
-  // const wchar_t ris_Z=L'\U0001F1FF';
-  // assert((ris_Z-ris_A)==('Z'-'A'));
-  #define RIS_A (L'\U0001F1E6')
-  #define RIS_Z (L'\U0001F1FF')
-  static_assert((RIS_Z-RIS_A)==('Z'-'A'));
-  wchar_t r=(wchar_t)RIS_A+(wchar_t)(c-'A');
-  assert(RIS_A<=r&&r<=RIS_Z);
-  return r;
-}
-
-static void cc2wcs(FlagWCS *const dest, const CC *const src){
-  *dest=(FlagWCS){.wcs={
-    [0]=c2ris((src->c)[0]),
-    [1]=c2ris((src->c)[1]),
-    [2]=L'\0'
-  }};
-  // dest->wcs[0]=c2ris((src->c)[0]);
-  // dest->wcs[1]=c2ris((src->c)[1]);
-  // dest->wcs[2]=L'\0';
-}
-
-static void wcs2mbs(FlagMBS *const dest, const FlagWCS *const src){
-  // Non-restartable
-  assert(8==wcstombs(NULL,src->wcs,0));
-  assert(8==wcstombs(dest->mbs,src->wcs,9));
-  // Restartable
-  // const wchar_t *p=src->wcs;
-  // mbstate_t t={};
-  // assert(1==mbsinit(&t));
-  // assert(8==wcsrtombs(NULL,&p,0,&t));
-  // assert(1==mbsinit(&t));
-  // assert(p==src->wcs);
-  // assert(8==wcsrtombs(dest->mbs,&p,9,&t));
-  // assert(1==mbsinit(&t));
-  // assert(p==NULL);
-  assert(dest->mbs[8]=='\0');
-}
-
-static void cc2wcs2mbs(FlagMBS *const dest, const CC *const src){
-  FlagWCS w={};
-  cc2wcs(&w,src);
-  wcs2mbs(dest,&w);
-}
-
 static bool strstrVA(const char *const haystack, ...){
   va_list ap;
   va_start(ap,haystack);
@@ -148,7 +81,7 @@ static void group(const char *const s){
                                                                      { l_asia =g_slist_prepend(l_asia ,strdup(s)); stray=false; }
   if(strstr(s,"日本")||strcasestr(s,"ntt"))/*補補補*/                  { l_jp   =g_slist_prepend(l_jp   ,strdup(s)); stray=false; }
   if(strstrVA(s,"美國","美国","加拿大",NULL))/*補補補*/                  { l_ca_us=g_slist_prepend(l_ca_us,strdup(s)); stray=false; }
-  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { l_eu_uk=g_slist_prepend(l_eu_uk,strdup(s)); stray=false; }
+  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { l_eu_gb=g_slist_prepend(l_eu_gb,strdup(s)); stray=false; }
   if(stray)/**/                                                      { l_stray=g_slist_prepend(l_stray,strdup(s));              }
 }
 
@@ -363,9 +296,9 @@ static void emit_node(Node *n){
   MAP_END();
 }
 
-static void emit_and_destroy_group(const char *const title,GSList *l){
+static void emit_and_destroy_group(const char *const title,GSList **const l){
 
-  if(!l){
+  if(!(*l)){
     eprintf("skip empty group %s\n",title);
     return;
   }
@@ -383,14 +316,15 @@ static void emit_and_destroy_group(const char *const title,GSList *l){
   SEQ_START();
 
   g_slist_foreach(
-    l,
+    *l,
     LAMBDA(void f(gpointer data, __attribute__((__unused__)) gpointer user_data){
       SCALAR(data);
     }),
     NULL
   );
 
-  g_slist_free_full(l,g_free);
+  g_slist_free_full(*l,g_free);
+  *l=NULL;
 
   SEQ_END();
 
@@ -540,16 +474,40 @@ int main(){
 
   SEQ_START();
 
-  // FlagMBS m={};
-  // cc2wcs2mbs(&m,&(CC){"MO"});emit_and_destroy_group(m.mbs,mo);mo=NULL;
+  // eprintf("MB_CUR_MAX %zu\n",MB_CUR_MAX);
+  assert(MB_CUR_MAX==6);
 
-  FlagMBS m={};
-  cc2wcs2mbs(&m,&(CC){"HK"});emit_and_destroy_group(m.mbs,l_asia);l_asia=NULL;
-  cc2wcs2mbs(&m,&(CC){"JP"});emit_and_destroy_group(m.mbs,l_jp);l_jp=NULL;
-                              emit_and_destroy_group("NA",l_ca_us);l_ca_us=NULL;
-  cc2wcs2mbs(&m,&(CC){"EU"});emit_and_destroy_group(m.mbs,l_eu_uk);l_eu_uk=NULL;
-                              emit_and_destroy_group("XX",l_stray);l_stray=NULL;
+  char buf[BUF_SZ];
+  bzero(buf,BUF_SZ);
 
+  ccs2str(buf,
+    &(CC){"HK"},
+    &(CC){"JP"},
+    &(CC){"KR"},
+    &(CC){"RU"},
+    &(CC){"SG"},
+    &(CC){"TW"},
+  NULL);emit_and_destroy_group(buf,&l_asia);
+
+  ccs2str(buf,
+    &(CC){"JP"},
+  NULL);emit_and_destroy_group(buf,&l_jp);
+  
+  ccs2str(buf,
+    &(CC){"CA"},
+    &(CC){"US"},
+  NULL);emit_and_destroy_group(buf,&l_ca_us);
+
+  ccs2str(buf,
+    &(CC){"EU"},
+    &(CC){"GB"},
+  NULL);emit_and_destroy_group(buf,&l_eu_gb);
+
+  // /* */;emit_and_destroy_group("XX",&l_stray);
+  ccs2str(buf,
+    &(CC){"UN"},
+  NULL);emit_and_destroy_group(buf,&l_stray);
+  
   SEQ_END();
 
   parser_end();
