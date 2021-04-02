@@ -474,7 +474,6 @@ int main(){
 
   SEQ_START();
 
-  // eprintf("MB_CUR_MAX %zu\n",MB_CUR_MAX);
   assert(MB_CUR_MAX==6);
 
   char buf[BUF_SZ];
@@ -503,7 +502,6 @@ int main(){
     &(CC){"GB"},
   NULL);emit_and_destroy_group(buf,&l_eu_gb);
 
-  // /* */;emit_and_destroy_group("XX",&l_stray);
   ccs2str(buf,
     &(CC){"UN"},
   NULL);emit_and_destroy_group(buf,&l_stray);

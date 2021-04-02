@@ -4,12 +4,15 @@
 #include <stddef.h>
 #include <stdarg.h>
 
-#define MAX_FLAGS_IN_GROUP 6
 #define MB_CUR_RIS 4
+#define MAX_FLAGS_IN_GROUP 6
+
+// +1 for appending a space after each flag
 #define BUF_SZ ( \
-  MB_CUR_RIS*(MAX_FLAGS_IN_GROUP*2-1) + \
-  MB_CUR_MAX*1 + \
-1 )
+  (MB_CUR_RIS+MB_CUR_RIS+1) * (MAX_FLAGS_IN_GROUP-1) + \
+  (MB_CUR_RIS+MB_CUR_MAX+1) * 1 + \
+  1 \
+)
 
 // https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
 // https://en.wikipedia.org/wiki/Country_code

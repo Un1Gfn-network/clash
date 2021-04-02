@@ -1,7 +1,9 @@
 #include <assert.h>
-#include <wchar.h>
+#include <stdbool.h>
 #include <stdlib.h> // wctomb()
+#include <string.h> // memcmp()
 #include <strings.h> // bzero()
+#include <wchar.h>
 
 #include "./flag.h"
 
@@ -31,14 +33,24 @@ void ccs2str(char *const dest, ...){
   const CC *p=NULL;
 
   char *s=dest;
-  fprintf(stderr,"\n");
-  fprintf(stderr,"--%ld\n",BUF_SZ-1);
-  fprintf(stderr,"%ld\n",s-dest);
+  // fprintf(stderr,"\n");
+  // fprintf(stderr,"--%ld\n",BUF_SZ-1);
+  // fprintf(stderr,"%ld\n",s-dest);
   while(NULL!=(p=(const CC*)va_arg(ap,const CC*))){
     assert( s>=dest && (size_t)(s-dest)<=(BUF_SZ-1) );
-    assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[0])));s+=MB_CUR_RIS;
-    assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[1])));s+=MB_CUR_RIS;
-    fprintf(stderr,"%ld\n",s-dest);
+    if(false){
+      ;
+    }else if(0==memcmp(p->c,"CN",2)||0==memcmp(p->c,"MO",2)){
+      assert(3==sprintf(s,"\u2612"));s+=3; // ☒
+    }else if(0==memcmp(p->c,"HK",2)){
+      // https://www.compart.com/en/unicode/U+1F3F4
+      assert(4==sprintf(s,"\U0001F3F4"));s+=4; // 🏴
+    }else{
+      assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[0])));s+=MB_CUR_RIS;
+      assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[1])));s+=MB_CUR_RIS;
+    }
+    *(s++)=' ';
+    // fprintf(stderr,"%ld\n",s-dest);
   }
 
   *s='\0';
