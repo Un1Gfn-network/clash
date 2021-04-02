@@ -1,11 +1,14 @@
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h> // sprintf()
 #include <stdlib.h> // wctomb()
 #include <string.h> // memcmp()
 #include <strings.h> // bzero()
 #include <wchar.h>
 
 #include "./flag.h"
+
+// #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
 // https://en.wikipedia.org/wiki/Regional_indicator_symbol
 // wchar_t aka int
@@ -22,8 +25,6 @@ wchar_t c2ris(const char c){
   return r;
 }
 
-#include <stdio.h>
-
 void ccs2str(char *const dest, ...){
 
   bzero(dest,BUF_SZ);
@@ -33,11 +34,12 @@ void ccs2str(char *const dest, ...){
   const CC *p=NULL;
 
   char *s=dest;
-  // fprintf(stderr,"\n");
-  // fprintf(stderr,"--%ld\n",BUF_SZ-1);
-  // fprintf(stderr,"%ld\n",s-dest);
+  // eprintf("\n");
+  // eprintf("--%ld\n",BUF_SZ-1);
+  // eprintf("%ld\n",s-dest);
   while(NULL!=(p=(const CC*)va_arg(ap,const CC*))){
-    assert( s>=dest && (size_t)(s-dest)<=(BUF_SZ-1) );
+    // eprintf(" ------ %llu <= %llu\n",(long long unsigned)(s+MB_CUR_RIS+MB_CUR_MAX),(long long unsigned)(dest+BUF_SZ-1));
+    assert( s>=dest && s+MB_CUR_RIS+MB_CUR_MAX+1<=dest+BUF_SZ-1 );
     if(false){
       ;
     }else if(0==memcmp(p->c,"CN",2)||0==memcmp(p->c,"MO",2)){
@@ -50,7 +52,7 @@ void ccs2str(char *const dest, ...){
       assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[1])));s+=MB_CUR_RIS;
     }
     *(s++)=' ';
-    // fprintf(stderr,"%ld\n",s-dest);
+    // eprintf("%ld\n",s-dest);
   }
 
   *s='\0';
