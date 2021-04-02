@@ -43,15 +43,11 @@ static yaml_token_t token={};
 static yaml_emitter_t emitter={};
 static yaml_event_t event={};
 
-static GSList *eu=NULL;
-static GSList *hk=NULL;
-static GSList *jp=NULL;
-static GSList *kr=NULL;
-// static GSList *mo=NULL;
-static GSList *na=NULL;
-static GSList *sg=NULL;
-static GSList *tw=NULL;
-static GSList *xx=NULL;
+static GSList *l_asia=NULL;
+static GSList *l_jp=NULL;
+static GSList *l_ca_us=NULL;
+static GSList *l_eu_uk=NULL;
+static GSList *l_stray=NULL;
 
 // Common
 static char plain_port[SZ_PORT]={};
@@ -135,29 +131,25 @@ static void cc2wcs2mbs(FlagMBS *const dest, const CC *const src){
   wcs2mbs(dest,&w);
 }
 
-static void group(const char *const s0){
-  char *s=calloc(SZ,sizeof(char));
-  strcpy(s,s0);
-  if(false)
-    ;
-  else if(strstr(s,"荷蘭")||strstr(s,"荷兰")||strstr(s,"德國")||strstr(s,"德国"))
-    eu=g_slist_prepend(eu,s);
-  else if(strstr(s,"港"))
-    hk=g_slist_prepend(hk,s);
-  else if(strstr(s,"日本")||strcasestr(s,"ntt"))
-    jp=g_slist_prepend(jp,s);
-  else if(strstr(s,"韓國")||strstr(s,"韓国")||strstr(s,"韩国"))
-    kr=g_slist_prepend(kr,s);
-  // else if(strstr(s,"澳門")||strstr(s,"澳门"))
-  //   mo=g_slist_prepend(mo,s);
-  else if(strstr(s,"美國")||strstr(s,"美国")||strstr(s,"加拿大"))
-    na=g_slist_prepend(na,s);
-  else if(strstr(s,"新加坡"))
-    sg=g_slist_prepend(sg,s);
-  else if(strstr(s,"臺灣")||strstr(s,"台灣")||strstr(s,"台湾"))
-    tw=g_slist_prepend(tw,s);
-  else
-    xx=g_slist_prepend(xx,s);
+static bool strstrVA(const char *const haystack, ...){
+  va_list ap;
+  va_start(ap,haystack);
+  const char *needle=NULL;
+  while((needle=(const char*)va_arg(ap,const char*)))
+    if(strstr(haystack,needle))
+      return true;
+  return false;
+}
+
+static void group(const char *const s){
+  bool stray=true;
+  //                                        hk   jp    kr                ru              sg      tw 
+  if(strstrVA(s,"ASYNCHRONOUS TRANSFERMODE","港","日本","韓國","韓国","韩国","俄羅斯","俄罗斯","新加坡","臺灣","台灣","台湾",NULL))
+                                                                     { l_asia =g_slist_prepend(l_asia ,strdup(s)); stray=false; }
+  if(strstr(s,"日本")||strcasestr(s,"ntt"))/*補補補*/                  { l_jp   =g_slist_prepend(l_jp   ,strdup(s)); stray=false; }
+  if(strstrVA(s,"美國","美国","加拿大",NULL))/*補補補*/                  { l_ca_us=g_slist_prepend(l_ca_us,strdup(s)); stray=false; }
+  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { l_eu_uk=g_slist_prepend(l_eu_uk,strdup(s)); stray=false; }
+  if(stray)/**/                                                      { l_stray=g_slist_prepend(l_stray,strdup(s));              }
 }
 
 static void emit_scalar(const char *s,...){
@@ -548,26 +540,15 @@ int main(){
 
   SEQ_START();
 
-  
-  // emit_and_destroy_group("EU",eu);eu=NULL;
-  // emit_and_destroy_group("HK",hk);hk=NULL;
-  // emit_and_destroy_group("JP",jp);jp=NULL;
-  // emit_and_destroy_group("KR",kr);kr=NULL;
-  // emit_and_destroy_group("NA",na);na=NULL;
-  // emit_and_destroy_group("SG",sg);sg=NULL;
-  // emit_and_destroy_group("TW",tw);tw=NULL;
-  // emit_and_destroy_group("XX",xx);xx=NULL;
+  // FlagMBS m={};
+  // cc2wcs2mbs(&m,&(CC){"MO"});emit_and_destroy_group(m.mbs,mo);mo=NULL;
 
   FlagMBS m={};
-  // cc2wcs2mbs(&m,&(CC){"MO"});emit_and_destroy_group(m.mbs,mo);mo=NULL;
-  cc2wcs2mbs(&m,&(CC){"HK"});emit_and_destroy_group(m.mbs,hk);hk=NULL;
-                              emit_and_destroy_group("NA",na);na=NULL;
-  cc2wcs2mbs(&m,&(CC){"JP"});emit_and_destroy_group(m.mbs,jp);jp=NULL;
-  cc2wcs2mbs(&m,&(CC){"TW"});emit_and_destroy_group(m.mbs,tw);tw=NULL;
-  cc2wcs2mbs(&m,&(CC){"KR"});emit_and_destroy_group(m.mbs,kr);kr=NULL;
-  cc2wcs2mbs(&m,&(CC){"SG"});emit_and_destroy_group(m.mbs,sg);sg=NULL;
-  cc2wcs2mbs(&m,&(CC){"EU"});emit_and_destroy_group(m.mbs,eu);eu=NULL;
-                              emit_and_destroy_group("XX",xx);xx=NULL;
+  cc2wcs2mbs(&m,&(CC){"HK"});emit_and_destroy_group(m.mbs,l_asia);l_asia=NULL;
+  cc2wcs2mbs(&m,&(CC){"JP"});emit_and_destroy_group(m.mbs,l_jp);l_jp=NULL;
+                              emit_and_destroy_group("NA",l_ca_us);l_ca_us=NULL;
+  cc2wcs2mbs(&m,&(CC){"EU"});emit_and_destroy_group(m.mbs,l_eu_uk);l_eu_uk=NULL;
+                              emit_and_destroy_group("XX",l_stray);l_stray=NULL;
 
   SEQ_END();
 
