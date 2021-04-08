@@ -36,7 +36,13 @@ $(BIN)/convert.out: flag.c flag.h convert.c ../restful_port.h
 	@realpath --canonicalize-existing $(BIN)/convert.out
 	@echo
 
-clean:
+uninstall:
+	$(MAKE) clean
 	@rm -fv $(BIN)/convert.out
 	@rm -fv $(BIN)/clash_run
 	@rm -fv $(BIN)/clash_update
+
+clean:
+	@rm -fv *.out
+
+utf8count.out: utf8count.c; $(CC) $(CFLAGS) -o $@ $<

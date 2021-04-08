@@ -354,6 +354,8 @@ static void emit_and_destroy_group(const char *const title,GSList **const l){
   // const wchar_t *name = L"\U0001F1ED\U0001F1F0";
   // wprintf(L"name is %ls\n",name);
 
+  // https://stackoverflow.com/questions/8681623/printf-and-wprintf-in-single-c-code
+  // fwide(3)
 }*/
 
 int main(){
