@@ -1,85 +1,54 @@
-# clash_tun
-
-## Todo
-
-[Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
-
-[go-tun2socks](https://github.com/eycorsican/go-tun2socks)
-
-[libnl](https://www.infradead.org/~tgr/libnl/)
-
-proc.c - inspect_proc() - wait till clash is dead
-* \__NR_pidfd_open + (pthread_create()+) \__NR_pidfd_send_signal + epoll_wait()
-* ptrace(2)
-* [netlink](https://bewareofgeek.livejournal.com/2945.html)
-
-main.c - start_badvpn() - enforce print order btw child & parent proc w/ semaphore
-
-[Makefile - Managing Large Projects](https://www.oreilly.com/library/view/managing-projects-with/0596006101/ch06.html)
+# [clash](https://github.com/Un1Gfn-network/clash)
 
 ## Misc
 
+convert.c replace `GSList` with `SLIST`\
+https://stackoverflow.com/questions/7627099/how-to-use-list-from-sys-queue-h \
+[queue(3bsd)](https://man.archlinux.org/man/queue.3bsd)
+/usr/include/bsd/sys/queue.h
+<s>/usr/include/sys/queue.h</s>
+
+|bin||
+|-|-|
+|clash_update|default_browser -> raw.yaml -> clash.db|
+|clash_run   |( clash.db -> config.yaml ), Country.mmdb -> /tmp/clash/|
+|clash_qr    |current_server_title() -> clash.db -> libqrencode.so -> QR code|
+|clash_tun   |current_server_title() -> clash.db -> start_ss(), netlink_\*() start_badvpn()|
+
+clash.db (implement key-value store with single-row table)
+
+|n_rows|table_name||
+|:-:|-|-|
+|any|`ANNOUNCEMENTS`|extraced from loopback nodes|
+|1  |`PORT`||
+|1  |`CIPHER`||
+|1  |`PASSWORD`||
+|any|`NODES`||
+|1  |`PASSWORD`||
+|1  |`RAW`|original yaml|
+
+excluding libyaml/
+
+    tree -a -C -I libyaml\|.git\|.gitignore --dirsfirst
+    find . -path ./libyaml -prune -false -o -iname '*.c' -o -iname '*.h'
+
 [Glibc NPTL src](https://sourceware.org/git/?p=glibc.git;a=tree;f=nptl)
 
-Change module filename
+Change filename
 
-```bash
-make clean
-git mv -- {old,new}.h
-git mv -- {old,new}.c
-find . -type f \( -name '*.c' -o -name '*.h' \) -exec grep -H 'old.h' {} \;
-# Check previous output before invoking sed
-find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/old.h/new.h/g' {} \;
-git diff
-```
+    make clean
+    git mv -- {old,new}.h
+    git mv -- {old,new}.c
+    find . -type f \( -name '*.c' -o -name '*.h' \) -exec grep -H 'old.h' {} \;
+    # Check previous output before invoking sed
+    find . -type f \( -name '*.c' -o -name '*.h' \) -exec sed -i 's/old.h/new.h/g' {} \;
+    git diff
 
 [SO answer ioctl/netlink interface up/down](https://stackoverflow.com/a/63950398)
 
 ambrop72/badvpn/tun2socks
 * [wiki](https://github.com/ambrop72/badvpn/wiki/Tun2socks)
 * [`--socks5-udp`](https://github.com/ambrop72/badvpn/blob/master/tun2socks/tun2socks.c#:~:text=%21strcmp%28arg%2C%20%22--socks5-udp%22%29) (release too old, build badvpn-git) :heavy_check_mark:
-
-[Android tcpdump](https://www.androidtcpdump.com/android-tcpdump/compile)
-
-```bash
-cd /tmp
-mkdir tcpdump
-cd tcpdump
-# sudo pacman -Syu aarch64-linux-gnu-gcc
-proxychains wget https://www.tcpdump.org/release/tcpdump-4.9.3.tar.gz
-proxychains wget https://www.tcpdump.org/release/libpcap-1.9.1.tar.gz
-tar xf libpcap-1.9.1.tar.gz
-tar xf tcpdump-4.9.3.tar.gz
-
-cd /tmp/tcpdump/libpcap-1.9.1/
-export CC=/usr/bin/aarch64-linux-gnu-gcc
-./configure --host=aarch64-linux --with-pcap=linux
-make -j4
-
-cd /tmp/tcpdump/tcpdump-4.9.3
-export CC=/usr/bin/aarch64-linux-gnu-gcc
-export ac_cs_linux_vers=4 # Android
-export CFLAGS=-static
-export CPPFLAGS=-static
-export LDFLAGS=-static
-./configure --host=aarch64-linux --disable-ipv6
-make -j4
-
-adb push tcpdump /sdcard/Download/
-adb shell
-# su
-cd /data/data/com.termux/files/home/
-mv /sdcard/Download/tcpdump ./
-chmod +x tcpdump
-./tcpdump -i any -w android.pcap
-mv android.pcap /sdcard/Download
-# exit
-exit
-
-cd /tmp/tcpdump
-adb pull /sdcard/Download/android.pcap
-
-```
 
 little-endian
 
@@ -266,3 +235,69 @@ $BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   1   2 4 192 168 1
 $BUSCTL call $SERVICE $OBJECT $INTERFACE $METHOD 'ia(iay)' 3   2   2 4 8 8 8 8       2 4 8 8 4 4
 ```
 
+## Todo
+
+[Generic steal_flag()](https://en.cppreference.com/w/c/language/generic)
+
+[go-tun2socks](https://github.com/eycorsican/go-tun2socks)
+
+[libnl](https://www.infradead.org/~tgr/libnl/)
+
+proc.c - inspect_proc() - wait till clash is dead
+* \__NR_pidfd_open + (pthread_create()+) \__NR_pidfd_send_signal + epoll_wait()
+* ptrace(2)
+* [netlink](https://bewareofgeek.livejournal.com/2945.html)
+
+main.c - start_badvpn() - enforce print order btw child & parent proc w/ semaphore
+
+[Makefile - Managing Large Projects](https://www.oreilly.com/library/view/managing-projects-with/0596006101/ch06.html)
+
+## Garbage
+
+<details><summary>garbage</summary>
+
+<br>
+
+[Android tcpdump](https://www.androidtcpdump.com/android-tcpdump/compile)
+
+```bash
+cd /tmp
+mkdir tcpdump
+cd tcpdump
+# sudo pacman -Syu aarch64-linux-gnu-gcc
+proxychains wget https://www.tcpdump.org/release/tcpdump-4.9.3.tar.gz
+proxychains wget https://www.tcpdump.org/release/libpcap-1.9.1.tar.gz
+tar xf libpcap-1.9.1.tar.gz
+tar xf tcpdump-4.9.3.tar.gz
+
+cd /tmp/tcpdump/libpcap-1.9.1/
+export CC=/usr/bin/aarch64-linux-gnu-gcc
+./configure --host=aarch64-linux --with-pcap=linux
+make -j4
+
+cd /tmp/tcpdump/tcpdump-4.9.3
+export CC=/usr/bin/aarch64-linux-gnu-gcc
+export ac_cs_linux_vers=4 # Android
+export CFLAGS=-static
+export CPPFLAGS=-static
+export LDFLAGS=-static
+./configure --host=aarch64-linux --disable-ipv6
+make -j4
+
+adb push tcpdump /sdcard/Download/
+adb shell
+# su
+cd /data/data/com.termux/files/home/
+mv /sdcard/Download/tcpdump ./
+chmod +x tcpdump
+./tcpdump -i any -w android.pcap
+mv android.pcap /sdcard/Download
+# exit
+exit
+
+cd /tmp/tcpdump
+adb pull /sdcard/Download/android.pcap
+
+```
+
+</details>
