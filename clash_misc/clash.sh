@@ -6,8 +6,6 @@
 # Deps
 # pacman -Syu --needed unzip wget
 
-# export PATH="$PATH:/home/darren/.clash/bin"
-
 countrydb='Country.mmdb'
 zip='yacd-gh-pages.zip'
 
@@ -109,7 +107,7 @@ if [ "$(basename "$0")" = "clash_update" ]; then
     echo
 
     cd /tmp
-    convert.out <raw.yaml >config.yaml
+    clash_convert <raw.yaml >config.yaml
     less -SRM +% config.yaml
     echo -n 'ok? '
     read -r

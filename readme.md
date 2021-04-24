@@ -47,6 +47,14 @@ configure.ac [`AC_ARG_VAR(X...)`](https://www.gnu.org/software/autoconf/manual/a
     [ -f /tmp/raw.yaml ] && env LD_LIBRARY_PATH=/tmp/x/usr/local/lib /tmp/x/usr/local/bin/clash_convert </tmp/raw.yaml
     make DESTDIR=/tmp/x uninstall && tree -aC /tmp/x && rm -rv /tmp/x
 
+<div></div>
+
+    cd "$(git rev-parse --show-toplevel)"/build
+    sudo make --no-print-directory uninstall
+    tree -aC /usr/local
+    sudo make --no-print-directory install
+    tree -aC /usr/local
+
 convert.c replace `GSList` with `SLIST`\
 https://stackoverflow.com/questions/7627099/how-to-use-list-from-sys-queue-h \
 [queue(3bsd)](https://man.archlinux.org/man/queue.3bsd)
