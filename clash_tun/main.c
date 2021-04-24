@@ -1,12 +1,13 @@
 #include <assert.h>
+#include <fcntl.h>
+#include <netinet/in.h> // INET_ADDRSTRLEN
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
-#include <fcntl.h>
 
-#include <netinet/in.h> // INET_ADDRSTRLEN
+#include <libclash.h>
 
 #include "./bus.h"
 #include "./def.h"
@@ -16,7 +17,6 @@
 #include "./privilege.h"
 #include "./proc.h"
 #include "./profile.h"
-#include "./restful.h"
 #include "./shadowsocks.h"
 
 char gw[INET_ADDRSTRLEN]={};

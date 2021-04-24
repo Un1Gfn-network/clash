@@ -10,10 +10,11 @@
 #include <shadowsocks.h>
 #include <yaml.h>
 
+#include <libclash.h>
+
 #include "./def.h"
 #include "./file.h"
 #include "./profile.h"
-#include "./resolv.h"
 #include "./shadowsocks.h"
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)

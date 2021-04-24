@@ -1,5 +1,25 @@
-*.out
-*.o
-/libyaml/
+# autoscan
+autoscan.log
+configure.scan
 
-test.c
+# autoreconf -v -i -Wall -Werror
+Makefile.in
+/aclocal.m4
+/ar-lib
+/autom4te.cache
+/compile
+/config.guess
+/config.h.in
+/config.sub
+/configure
+/depcomp
+/install-sh
+/ltmain.sh
+/missing
+/m4/*
+!/m4/.keep
+
+# VPATH build
+# https://www.gnu.org/software/automake/manual/html_node/VPATH-Builds.html
+/build/*
+!/build/.keep
