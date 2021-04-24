@@ -10,9 +10,11 @@
 #include <string.h>
 #include <yaml.h>
 
-// 7892 -> 9090
-#include "../restful_port.h"
 #include "./flag.h"
+
+// https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
+#define xstr(a) str(a)
+#define str(a) #a
 
 #define SZ        128
 #define SZ_CIPHER  64
@@ -126,7 +128,7 @@ static void emitter_begin(){
     "allow-lan","true",
     "mode","Global",
     "log-level","info",
-    "external-controller","127.0.0.1:"RESTFUL_PORT, // yacd updated defaults
+    "external-controller","127.0.0.1:"xstr(RESTFUL_PORT), // yacd updated defaults
     // "external-controller","\'127.0.0.1:6170\'",
     "secret","",
     NULL
