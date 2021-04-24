@@ -1,29 +1,39 @@
 # https://www.gnu.org/software/automake/manual/html_node/A-Library.html
 
-# Fix the following error by putting libmain.a before any other lib*.a 
+# Proposal - use libtool instead of hard-coded *.a to support Windows *.lib
+# (1) Remove disable-static from LT_INIT() in configure.ac
+# (2) Enable  static & disable shared in lib/Makefile.am
+# (3) Disable static & enable  shared in clash_tun/Makefile.am (here)
+# (4) noinst_LIBRARIES = \
+# 	main.la \
+# 	bus.la \
+# 	ioctl.la \
+# 	proc.la \
+# 	profile.la \
+# 	shadowsocks.la
+
+# Put libmain.a before any other lib*.a in case of the following error 
 # main.c:*: undefined reference to `...'
 
+# Bob Proulx - library name enforcement?
+# https://lists.gnu.org/archive/html/automake/2004-05/msg00016.html
+# clash_tun/Makefile.am:*: error: '*.a' is not a standard library name
+# clash_tun/Makefile.am:*: did you mean 'lib*.a'?
+
 noinst_LIBRARIES = \
-	libmain.a \
-	libbus.a \
-	libioctl.a \
-	libproc.a \
-	libprofile.a \
-	libshadowsocks.a
+	main.a \
+	bus.a \
+	ioctl.a \
+	proc.a \
+	profile.a \
+	shadowsocks.a
 
-libmain_a_CFLAGS = -I$(top_srcdir)/include
-libbus_a_CFLAGS = $(LIBSYSTEMD_CFLAGS)
-libioctl_a_CFLAGS = $(LIBBSD_CFLAGS)
-libproc_a_CFLAGS = $(LIBPROCPS_CFLAGS)
-libprofile_a_CFLAGS = $(JSONC_CFLAGS) $(LIBYAML_CFLAGS) $(SSLIBEV_CFLAGS) -I$(top_srcdir)/include
-libshadowsocks_a_CFLAGS = $(SSLIBEV_CFLAGS)
-
-libmain_a_SOURCES        = main.c
-libbus_a_SOURCES         = bus.c
-libioctl_a_SOURCES       = ioctl.c
-libproc_a_SOURCES        = proc.c
-libprofile_a_SOURCES     = profile.c
-libshadowsocks_a_SOURCES = shadowsocks.c
+main_a_CFLAGS = -I$(top_srcdir)/include
+bus_a_CFLAGS = $(LIBSYSTEMD_CFLAGS)
+ioctl_a_CFLAGS = $(LIBBSD_CFLAGS)
+proc_a_CFLAGS = $(LIBPROCPS_CFLAGS)
+profile_a_CFLAGS = $(JSONC_CFLAGS) $(LIBYAML_CFLAGS) $(SSLIBEV_CFLAGS) -I$(top_srcdir)/include
+shadowsocks_a_CFLAGS = $(SSLIBEV_CFLAGS)
 
 # https://www.gnu.org/software/automake/manual/html_node/Per_002dObject-Flags.html
 

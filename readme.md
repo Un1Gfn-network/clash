@@ -2,6 +2,15 @@
 
 ## Misc
 
+<!-- https://en.wikipedia.org/wiki/List_of_logic_symbols -->
+
+configure.ac [`AC_DEFINE(X...)`](https://www.gnu.org/software/autoconf/manual/autoconf-2.70/html_node/Defining-Symbols.html) &rArr;\
+&bullet; Makefile `DEFS = -DX...`\
+&bullet; config.h `#define X...`
+
+configure.ac [`AC_ARG_VAR(X...)`](https://www.gnu.org/software/autoconf/manual/autoconf-2.70/html_node/Setting-Output-Variables.html#index-AC_005fARG_005fVAR-1) + `./configure ...=...` &rArr;\
+&bullet; `X` is AC_SUBST'ed &nbsp; (use `$(X)` manually in Makefile.am)
+
     cd "$(git rev-parse --show-toplevel)" && \
     git clean -dfX && \
     git status --ignored
@@ -9,7 +18,7 @@
 <div></div>
 
     cd "$(git rev-parse --show-toplevel)" && \
-    autoreconf -v -i -Wall -Werror
+    autoreconf -v -i -Wall
 
 <div></div>
 
@@ -23,7 +32,14 @@
 <div></div>
 
     cd "$(git rev-parse --show-toplevel)"/build
-    make all
+    make --no-print-directory all
+
+<div></div>
+
+    cd "$(git rev-parse --show-toplevel)"/build
+    rm -rf /tmp/x && make --no-print-directory DESTDIR=/tmp/x install && tree -aC /tmp/x
+    [ -f /tmp/raw.yaml ] && env LD_LIBRARY_PATH=/tmp/x/usr/local/lib /tmp/x/usr/local/bin/clash_convert </tmp/raw.yaml
+    make DESTDIR=/tmp/x uninstall && tree -aC /tmp/x && rm -rv /tmp/x
 
 convert.c replace `GSList` with `SLIST`\
 https://stackoverflow.com/questions/7627099/how-to-use-list-from-sys-queue-h \

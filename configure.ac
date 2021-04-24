@@ -26,14 +26,14 @@ AC_PROG_SED
 # AC_SUBST(LIBCURL_LIBS, m4_quote(m4_esyscmd_s([curl-config --libs])))
 PKG_PROG_PKG_CONFIG(1.7.3)
 PKG_PREREQ(0.29.1)
-PKG_CHECK_MODULES(LIBCURL, libcurl >= 7.76.0)
-PKG_CHECK_MODULES(GLIB20, glib-2.0 >= 2.68.1)
-PKG_CHECK_MODULES(JSONC, json-c >= 0.15)
-PKG_CHECK_MODULES(LIBBSD, libbsd >= 0.10.0)
-PKG_CHECK_MODULES(LIBPROCPS, libprocps >= 3.3.17)
-PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd >= 248)
-PKG_CHECK_MODULES(LIBYAML, yaml-0.1 >= 0.2.5)
-PKG_CHECK_MODULES(SSLIBEV, shadowsocks-libev >= 3.3.5)
+PKG_CHECK_MODULES(LIBCURL, libcurl = 7.76.0)
+PKG_CHECK_MODULES(GLIB20, glib-2.0 = 2.68.1)
+PKG_CHECK_MODULES(JSONC, json-c = 0.15)
+PKG_CHECK_MODULES(LIBBSD, libbsd = 0.10.0)
+PKG_CHECK_MODULES(LIBPROCPS, libprocps = 3.3.17)
+PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd = 248)
+PKG_CHECK_MODULES(LIBYAML, yaml-0.1 = 0.2.5)
+PKG_CHECK_MODULES(SSLIBEV, shadowsocks-libev = 3.3.5)
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h strings.h sys/ioctl.h sys/socket.h unistd.h])
@@ -63,6 +63,8 @@ AC_CHECK_FUNCS([bzero dup2 inet_ntoa memset regcomp setlocale socket strdup stre
 # -Wextra-portability
 # -Wsyntax
 # -Wunsupported
+# -Wall
+# -Werror
 AM_INIT_AUTOMAKE([
   foreign
   no-dist
@@ -73,7 +75,6 @@ AM_INIT_AUTOMAKE([
   subdir-objects
   1.16.3
   -Wall
-  -Werror
 ])
 AM_PROG_AR
 AM_SILENT_RULES([yes])
@@ -97,3 +98,4 @@ AC_MSG_RESULT([__file__:__line__: removing rpath from libtool...])
 sed -i.old s/'^hardcode_libdir_flag_spec.*$'/'hardcode_libdir_flag_spec="-D__LIBTOOL_IS_A_FOOL__"'/g libtool
 diff -u0 libtool.old libtool
 test "$?" -eq 1 || (exit -1)
+rm -v libtool.old
