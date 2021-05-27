@@ -17,7 +17,7 @@
 #include "./privilege.h"
 #include "./proc.h"
 #include "./profile.h"
-#include "./shadowsocks.h"
+#include "./shadowsocks2.h"
 
 char gw[INET_ADDRSTRLEN]={};
 

@@ -26,8 +26,8 @@ AC_PROG_SED
 # AC_SUBST(LIBCURL_LIBS, m4_quote(m4_esyscmd_s([curl-config --libs])))
 PKG_PROG_PKG_CONFIG(1.7.3)
 PKG_PREREQ(0.29.1)
-PKG_CHECK_MODULES(LIBCURL, libcurl = 7.76.0)
-PKG_CHECK_MODULES(GLIB20, glib-2.0 = 2.68.1)
+PKG_CHECK_MODULES(LIBCURL, libcurl >= 7.76.0)
+PKG_CHECK_MODULES(GLIB20, glib-2.0 >= 2.68.1)
 PKG_CHECK_MODULES(JSONC, json-c = 0.15)
 PKG_CHECK_MODULES(LIBBSD, libbsd = 0.10.0)
 PKG_CHECK_MODULES(LIBPROCPS, libprocps = 3.3.17)
@@ -83,6 +83,26 @@ AM_SILENT_RULES([yes])
 LT_PREREQ([2.4.6])
 LT_INIT([shared disable-static])
 
+# Doxygen
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+if test -z "$DOXYGEN"; then
+    AC_MSG_ERROR([doxygen not found])
+    /bin/false
+    exit -1
+fi
+AC_CHECK_PROGS([DOT], [dot])
+if test -z "$DOT"; then
+    AC_MSG_ERROR([graphviz/dot not found])
+    /bin/false
+    exit -1
+fi
+AC_CHECK_PROGS([PDF2SVG], [pdf2svg])
+if test -z "$PDF2SVG"; then
+    AC_MSG_ERROR([pdf2svg not found (for HTML_FORMULA_FORMAT)])
+    /bin/false
+    exit -1
+fi
+
 # Output
 AC_CONFIG_FILES([
   Makefile
@@ -90,6 +110,8 @@ AC_CONFIG_FILES([
   clash_tun/Makefile
   include/Makefile
   lib/Makefile
+  doc/Doxyfile
+  doc/Makefile
 ])
 AC_OUTPUT
 

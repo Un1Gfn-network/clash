@@ -50,15 +50,30 @@ static GSList *l_ca_us=NULL;
 static GSList *l_eu_gb=NULL;
 static GSList *l_stray=NULL;
 
+// name:     // var
+// type: ss  // const
+// server:   // var
+// port:     // shared // static char plain_port[SZ_PORT]
+// cipher:   // shared // static char plain_cipher[SZ_CIPHER]
+// password: // shared // static char plain_password[SZ]
+// udp: true // const
+
 // Common
 static char plain_port[SZ_PORT]={};
 static char plain_cipher[SZ_CIPHER]={};
 static char plain_password[SZ]={};
 
-// Common
-// static char obfs_port[SZ_PORT]={};
-// static char obfs_cipher[SZ_CIPHER]={};
-// static char obfs_host[SZ]={};
+// name:          // var
+// type: ss       // const
+// server:        // var
+// port:          // var
+// cipher:        // shared // static char obfs_cipher[SZ_CIPHER]
+// password: CNIX // const
+// udp: true      // const
+// plugin: obfs   // const
+// plugin-opts:
+//   mode: http   // const
+//   host:        // shared // static char obfs_host[SZ]
 
 // Unique
 typedef struct _Node {
@@ -308,6 +323,10 @@ static void emit_node(Node *n){
   MAP_END();
 }
 
+/*static void lambda1(gpointer data, __attribute__((__unused__)) gpointer user_data){
+  SCALAR(data);
+}*/
+
 static void emit_and_destroy_group(const char *const title,GSList **const l){
 
   if(!(*l)){
@@ -327,6 +346,7 @@ static void emit_and_destroy_group(const char *const title,GSList **const l){
 
   SEQ_START();
 
+  // g_slist_foreach(*l,&lambda1,NULL);
   g_slist_foreach(
     *l,
     LAMBDA(void f(gpointer data, __attribute__((__unused__)) gpointer user_data){
@@ -360,7 +380,16 @@ static void emit_and_destroy_group(const char *const title,GSList **const l){
   // fwide(3)
 }*/
 
-int main(){
+int main(const int argc, const char **argv){
+
+  assert(argv);
+
+  if(argc!=1){
+    puts("");
+    printf("  %s <in.yaml [>out.yaml]\n",argv[0]);
+    puts("");
+    return 0;
+  }
 
   setlocale(LC_CTYPE,"en_US.UTF-8");
 

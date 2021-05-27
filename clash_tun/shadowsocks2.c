@@ -11,7 +11,7 @@
 #include "./def.h"
 #include "./file.h"
 #include "./profile.h"
-#include "./shadowsocks.h"
+#include "./shadowsocks2.h"
 #include "./status.h"
 
 static pthread_t thread=0;

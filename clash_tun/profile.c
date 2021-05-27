@@ -15,7 +15,7 @@
 #include "./def.h"
 #include "./file.h"
 #include "./profile.h"
-#include "./shadowsocks.h"
+#include "./shadowsocks2.h"
 
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))

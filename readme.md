@@ -6,6 +6,14 @@
 
 ---
 
+## Doxygen
+
+https://stackoverflow.com/a/42479100
+
+Find headers to add to `INPUT =`
+
+    grep -h -r '#include.*<.*>' "$(git rev-parse --show-toplevel)" | sed 's, *//.*$,,g' | sort | uniq
+
 ## Misc
 
 <!-- https://en.wikipedia.org/wiki/List_of_logic_symbols -->

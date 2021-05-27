@@ -1,2 +1,2 @@
-SUBDIRS = include clash_misc lib clash_tun 
+SUBDIRS = include lib clash_tun clash_misc doc
 ACLOCAL_AMFLAGS = -I m4
