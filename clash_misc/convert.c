@@ -48,7 +48,7 @@ static GSList *l_inv_hk_ru=NULL;
 static GSList *l_jp=NULL;
 static GSList *l_ca_us=NULL;
 static GSList *l_eu_gb=NULL;
-static GSList *l_stray=NULL;
+static GSList *l_xx=NULL;
 
 // name:     // var
 // type: ss  // const
@@ -95,18 +95,18 @@ static bool strstrVA(const char *const haystack, ...){
 static void group(const char *const s){
 
   #define G_SLIST_PREPEND(l,e) l=g_slist_prepend(l,e)
-  bool stray=true;
+  bool xx=true;
 
   //                                        hk   jp    kr                ru              sg      tw
   if(strstrVA(s,"ASYNCHRONOUS TRANSFERMODE","港","日本","韓國","韓国","韩国","俄羅斯","俄罗斯","新加坡","臺灣","台灣","台湾",NULL))
-                                                                     { G_SLIST_PREPEND(l_asia      ,strdup(s)); stray=false; }
+                                                                     { G_SLIST_PREPEND(l_asia      ,strdup(s)); xx=false; }
 
   if(!strstrVA(s,"ASYNCHRONOUS TRANSFERMODE","港","俄羅斯","俄罗斯",NULL))
                                                                      { G_SLIST_PREPEND(l_inv_hk_ru ,strdup(s));              }
-  if(strstr(s,"日本")||strcasestr(s,"ntt"))/*補補補*/                  { G_SLIST_PREPEND(l_jp        ,strdup(s)); stray=false; }
-  if(strstrVA(s,"美國","美国","加拿大",NULL))/*補補補*/                  { G_SLIST_PREPEND(l_ca_us     ,strdup(s)); stray=false; }
-  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { G_SLIST_PREPEND(l_eu_gb     ,strdup(s)); stray=false; }
-  if(stray)/**/                                                      { G_SLIST_PREPEND(l_stray     ,strdup(s));              }
+  if(strstr(s,"日本")||strcasestr(s,"ntt"))/*補補補*/                  { G_SLIST_PREPEND(l_jp        ,strdup(s)); xx=false; }
+  if(strstrVA(s,"美國","美国","加拿大",NULL))/*補補補*/                  { G_SLIST_PREPEND(l_ca_us     ,strdup(s)); xx=false; }
+  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { G_SLIST_PREPEND(l_eu_gb     ,strdup(s)); xx=false; }
+  if(xx)/**/                                                      { G_SLIST_PREPEND(l_xx     ,strdup(s));              }
 
   #undef G_SLIST_PREPEND
 
@@ -522,21 +522,26 @@ int main(const int argc, const char **argv){
   char buf[BUF_SZ];
   bzero(buf,BUF_SZ);
 
-  /***/;emit_and_destroy_group("INV_HK_RU",&l_inv_hk_ru);
+  // ccs2str(buf,
+  //   &(CC){"UN"},
+  // NULL);emit_and_destroy_group(buf,&l_xx);
+  /***/;emit_and_destroy_group("XX",&l_xx);
 
-  ccs2str(buf,
-    &(CC){"JP"},
-  NULL);emit_and_destroy_group(buf,&l_jp);
-  
-  ccs2str(buf,
-    &(CC){"CA"},
-    &(CC){"US"},
-  NULL);emit_and_destroy_group(buf,&l_ca_us);
+  /***/;emit_and_destroy_group("INV_HK_RU",&l_inv_hk_ru);
 
   ccs2str(buf,
     &(CC){"EU"},
     &(CC){"GB"},
   NULL);emit_and_destroy_group(buf,&l_eu_gb);
+
+  ccs2str(buf,
+    &(CC){"JP"},
+  NULL);emit_and_destroy_group(buf,&l_jp);
+
+  ccs2str(buf,
+    &(CC){"CA"},
+    &(CC){"US"},
+  NULL);emit_and_destroy_group(buf,&l_ca_us);
 
   ccs2str(buf,
     &(CC){"HK"},
@@ -546,12 +551,6 @@ int main(const int argc, const char **argv){
     &(CC){"SG"},
     &(CC){"TW"},
   NULL);emit_and_destroy_group(buf,&l_asia);
-
-  // ccs2str(buf,
-  //   &(CC){"UN"},
-  // NULL);emit_and_destroy_group(buf,&l_stray);
-  /***/;emit_and_destroy_group("XX",&l_stray);
-
 
   SEQ_END();
 

@@ -32,7 +32,10 @@ static void *start_routine(void *arg){
   assert(!arg);
   try_unlink(SS_LOG);
   printf("starting ss\n");
+
+  // Show profile w/ lots of printf()
   // profile_inspect();
+
   if(-1==start_ss_local_server_with_callback(profile,callback,NULL)){
     // Failed
     status_change_from_to(DOWN,FAIL);

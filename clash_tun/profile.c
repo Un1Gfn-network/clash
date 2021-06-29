@@ -43,7 +43,6 @@ static yaml_token_t token={};
 profile_t profile={
 
   // Zero
-  // .timeout
   // .acl
   // .mtu
   // .mptcp
@@ -51,6 +50,7 @@ profile_t profile={
   // Immutable
   .local_addr=LOCAL_ADDR,
   .local_port=LOCAL_PORT_I,
+  .timeout=TIMEOUT,
   .log=SS_LOG,
   .fast_open=1,
   .mode=1,
@@ -72,7 +72,7 @@ profile_t profile={
 bool profile_loaded(){
   assert(
     // Zero
-    profile.timeout==0 &&
+    profile.timeout==TIMEOUT &&
     (!profile.acl) &&
     profile.mtu==0 &&
     profile.mptcp==0 &&
@@ -119,21 +119,21 @@ void profile_clear(){
 
 void profile_inspect(){
   printf("\n");
-  printf("%s\n",profile.remote_host);
-  printf("%s\n",profile.local_addr);
-  printf("%s\n",profile.method);
-  printf("%s\n",profile.password);
-  printf("%d\n",profile.remote_port);
-  printf("%d\n",profile.local_port);
-  printf("%d\n",profile.timeout);
+  printf("remote_host = %s\n",profile.remote_host);
+  printf("local_addr  = %s\n",profile.local_addr);
+  printf("method      = %s\n",profile.method);
+  printf("password    = %s\n",profile.password);
+  printf("remote_port = %d\n",profile.remote_port);
+  printf("local_port  = %d\n",profile.local_port);
+  printf("timeout     = %d\n",profile.timeout);
   printf("\n");
-  printf("%s\n",profile.acl?profile.acl:"null");
-  printf("%s\n",profile.log?profile.log:"null");
-  printf("%d\n",profile.fast_open);
-  printf("%d\n",profile.mode);
-  printf("%d\n",profile.mtu);
-  printf("%d\n",profile.mptcp);
-  printf("%d\n",profile.verbose);
+  printf("acl       = %s\n",profile.acl?profile.acl:"NULL");
+  printf("log       = %s\n",profile.log?profile.log:"NULL");
+  printf("fast_open = %d\n",profile.fast_open);
+  printf("mode      = %d\n",profile.mode);
+  printf("mtu       = %d\n",profile.mtu);
+  printf("mptcp     = %d\n",profile.mptcp);
+  printf("verbose   = %d\n",profile.verbose);
   printf("\n");
 }
 
