@@ -16,7 +16,8 @@
 #define xstr(a) str(a)
 #define str(a) #a
 
-#define SZ        128
+// Unicode character might take up to 4 bytes each
+#define SZ        1024
 #define SZ_CIPHER  64
 #define SZ_PORT     8
 // #define FILENAME "/home/darren/yaml/01_rixcloud.yaml"

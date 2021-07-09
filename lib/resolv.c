@@ -10,7 +10,7 @@
 
 #define common23(IT,P,RET) assert( !(IT->ai_canonname) && strcmp(RET,inet_ntoa(P->sin_addr))==0 )
 
-const struct sockaddr_in *common123(const struct addrinfo *const it){
+static inline const struct sockaddr_in *common123(const struct addrinfo *const it){
   assert(
     it->ai_flags==AI_CANONNAME &&
     it->ai_family==AF_INET &&

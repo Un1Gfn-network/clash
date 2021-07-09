@@ -3,12 +3,16 @@
 #include <json.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include <libclash.h>
+
+#define SZ 1024
 
 // https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
 #define xstr(a) str(a)
 #define str(a) #a
+#define json_object_put2(J) assert(1==json_object_put(J));J=NULL
 
 static char *buf=NULL;
 static size_t sz=0;
@@ -23,9 +27,8 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
   return nmemb;
 }
 
-static inline const char *curl_get(const char *const url){
+static inline const char *buf_get(const char *const url){
 
-  assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
   CURL *curl=curl_easy_init();
   assert(curl);
 
@@ -59,78 +62,112 @@ static inline const char *curl_get(const char *const url){
 
 }
 
-static inline void curl_drop(){
+static inline void buf_drop(){
   free(buf);
   buf=NULL;
   sz=0;
   curl_global_cleanup();
 }
 
-static inline void assert_field(const json_object *const j,const char *const k,const char *const v){
-  json_object *p=NULL;
-  assert(json_object_object_get_ex(j,k,&p));
-  assert(p);
+#define field_string_assert(J,K,V) assert(0==strcmp(V,field_string_get(J,K)))
+static inline const char *field_string_get(const json_object *const j,const char *const k){
+  assert(j&&k&&strlen(k));
+  json_object *p=json_object_object_get(j,k);assert(p);
   assert(json_type_string==json_object_get_type(p));
-  assert(0==strcmp(v,json_object_get_string(p)));
+  // printf("%s\n",json_type_to_name(json_object_get_type(p)));
+  const char *const s=json_object_get_string(p);
+  assert(s&&strlen(s));
+  return s;
 }
 
-static inline const char *get_field_string(const json_object *const j,const char *const k){
-  json_object *p=NULL;
-  assert(json_object_object_get_ex(j,k,&p));
-  assert(p);
-  json_type t=json_object_get_type(p);
-  if(t!=json_type_string){
-    printf("%s\n",json_type_to_name(t));
-    assert(0);
+// static inline int field_int_get(const json_object *const j,const char *const k){
+//   json_object *p=NULL;
+//   assert(json_object_object_get_ex(j,k,&p));
+//   assert(p);
+//   json_type t=json_object_get_type(p);
+//   if(t!=json_type_int){
+//     printf("%s\n",json_type_to_name(t));
+//     assert(0);
+//   }
+//   return json_object_get_int(p);
+// }
+
+static inline json_object *json_get(const char *const s){
+  if(s){
+    CURL *c=curl_easy_init();assert(c);
+    char *ss=curl_easy_escape(c,s,0);
+    curl_easy_cleanup(c);c=NULL;
+    assert(ss&&strlen(ss));
+    char t[SZ]={};
+    sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,ss);
+    // sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,s);
+    // assert(0==strcmp("400 Bad Request",buf));
+    curl_free(ss);ss=NULL;
+    buf_get(t);
+  }else{
+    buf_get("http://127.0.0.1:"xstr(RESTFUL_PORT)"/proxies/GLOBAL");
   }
-  return json_object_get_string(p);
+  json_object *j=NULL;
+  assert(NULL!=(j=json_tokener_parse(buf))&&json_type_object==json_object_get_type(j));
+  buf_drop();
+  return j;
 }
 
-static inline int get_field_int(const json_object *const j,const char *const k){
-  json_object *p=NULL;
-  assert(json_object_object_get_ex(j,k,&p));
-  assert(p);
-  json_type t=json_object_get_type(p);
-  if(t!=json_type_int){
-    printf("%s\n",json_type_to_name(t));
-    assert(0);
+
+/* RESTful look up for current node recursively (temporary section)
+
+https://www.url-encode-decode.com/
+https://curl.se/libcurl/c/curl_easy_escape.html
+https://curl.se/libcurl/c/curl_easy_unescape.html
+
+    STR="$(curl -s http://127.0.0.1:9090/proxies/GLOBAL | jq -r ".now|@uri")"
+    OBJ="$(curl -s http://127.0.0.1:9090/proxies/"$STR")"
+    [ "$STR" = "$(jq <<<"$OBJ" -r ".name|@uri")" ] || echo "err"
+    case "$(jq <<<"$OBJ" -r .type)" in
+    Shadowsocks)
+      ;;
+    Selector)
+      STR="$(jq <<<"$OBJ" -r ".now|@uri")"
+      ;;
+    *)
+      echo "err"
+      ;;
+    esac
+    echo "$STR"
+    alias urldecode='python -c "import urllib.parse, sys; print(urllib.parse.unquote(sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()[0:-1]))"'
+    urldecode "$STR"
+*/
+
+// char* instead of const char*
+// strdup() after json_object_put() is required
+char *now(){
+
+  json_object *j=NULL;
+  char *s=NULL;
+
+  j=json_get(NULL);
+  // printf("%s\n",json_object_to_json_string_ext(j,JSON_C_TO_STRING_PLAIN|JSON_C_TO_STRING_SPACED));
+  // printf("%s\n",json_object_to_json_string_ext(j,JSON_C_TO_STRING_PRETTY));
+  field_string_assert(j,"name","GLOBAL");
+  field_string_assert(j,"type","Selector");
+  s=strdup(field_string_get(j,"now"));
+  json_object_put2(j);
+
+  j=json_get(s);
+  field_string_assert(j,"name",s);
+  if(0!=strcmp("Shadowsocks",field_string_get(j,"type"))){
+    field_string_assert(j,"type","Selector");
+    printf("group (%s)\n",s);
+    free(s);s=NULL;
+    s=strdup(field_string_get(j,"now"));
+    json_object_put2(j);
+    // Optional
+    j=json_get(s);
+    field_string_assert(j,"name",s);
+    field_string_assert(j,"type","Shadowsocks");
   }
-  return json_object_get_int(p);
-}
+  json_object_put2(j);
 
-char *current_server_title(){
-
-  // Parse buf, not a file
-  json_tokener *const tok=json_tokener_new();
-  assert(tok);
-
-  json_tokener_reset(tok);
-  json_object *jobj=json_tokener_parse_ex(tok,curl_get("http://127.0.0.1:"xstr(RESTFUL_PORT)"/proxies/GLOBAL"),-1);
-  assert(jobj);
-  enum json_tokener_error jerr=json_tokener_get_error(tok);
-  if(jerr!=json_tokener_success){
-    printf("%s\n",json_tokener_error_desc(jerr));
-    assert(0);
-  }
-  assert(json_type_object==json_object_get_type(jobj));
-
-  // printf("%s\n",json_object_to_json_string_ext(jobj,JSON_C_TO_STRING_PLAIN|JSON_C_TO_STRING_SPACED));
-  // printf("%s\n",json_object_to_json_string_ext(jobj,JSON_C_TO_STRING_PRETTY));
-
-  assert_field(jobj,"name","GLOBAL");
-  assert_field(jobj,"type","Selector");
-  const char *const now=get_field_string(jobj,"now");
-  assert(now);
-  char *ret=strdup(now);
-  assert(ret);
-  // printf("%s\n",ret);
-
-  assert(1==json_object_put(jobj));
-  jobj=NULL;
-
-  curl_drop();
-  json_tokener_free(tok);
-
-  return ret;
+  return s;
 
 }

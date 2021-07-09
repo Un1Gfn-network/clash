@@ -28,35 +28,24 @@ configure.ac [`AC_ARG_VAR(X...)`](https://www.gnu.org/software/autoconf/manual/a
     cd "$(git rev-parse --show-toplevel)" && \
     git clean -dfX && \
     git status --ignored
-
-<div></div>
-
+<!-- -->
     cd "$(git rev-parse --show-toplevel)" && \
     autoreconf -v -i -Wall
-
-<div></div>
-
+<!-- -->
     cd "$(git rev-parse --show-toplevel)"/build && \
     ../configure \
       --prefix=/usr/local \
-      RESTFUL_PORT=9090 \
       CFLAGS="-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -Wshadow -D_GNU_SOURCE" \
       LIBTOOLFLAGS="-v --no-silent"
-
-<div></div>
-
+<!-- -->
     cd "$(git rev-parse --show-toplevel)"/build
     make --no-print-directory all
-
-<div></div>
-
+<!-- -->
     cd "$(git rev-parse --show-toplevel)"/build
     rm -rf /tmp/x && make --no-print-directory DESTDIR=/tmp/x install && tree -aC /tmp/x
     [ -f /tmp/raw.yaml ] && env LD_LIBRARY_PATH=/tmp/x/usr/local/lib /tmp/x/usr/local/bin/clash_convert </tmp/raw.yaml
     make DESTDIR=/tmp/x uninstall && tree -aC /tmp/x && rm -rv /tmp/x
-
-<div></div>
-
+<!-- -->
     cd "$(git rev-parse --show-toplevel)"/build
     sudo make --no-print-directory uninstall
     tree -aC /usr/local
@@ -96,7 +85,7 @@ Change filename
 little-endian
 
 ```
-rta_len=5 
+rta_len=5
 
 rta         rta+4
 |           |
@@ -118,7 +107,7 @@ org.freedesktop.Notifications
 * [Architecture](https://wiki.ubuntu.com/NotifyOSD#Architecture)
 * [C glib2/gio](https://wiki.archlinux.org/index.php/Desktop_notifications#C)
 
-sd_bus_message_append(3) `Table 1. Item type specifiers` `TYPES STRING GRAMMAR`  
+sd_bus_message_append(3) `Table 1. Item type specifiers` `TYPES STRING GRAMMAR` \
 bus_message_read(3) `Table 1. Item type specifiers`
 
 Clean-up Variable Attribute - sd_event(3)

@@ -3,6 +3,6 @@
 
 char *resolv(const char *domain);
 
-char *current_server_title();
+char *now();
 
 #endif

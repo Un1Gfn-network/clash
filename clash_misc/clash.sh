@@ -14,9 +14,9 @@ ZIPURL="https://github.com/haishanh/yacd/archive/gh-pages.zip"
 ZIP="yacd-gh-pages.zip"
 ZIPROOT="yacd-gh-pages"
 
-# https://github.com/Dreamacro/clash-dashboard
+# # https://github.com/Dreamacro/clash-dashboard
+# # ZIPURL="https://github.com/Dreamacro/clash-dashboard/archive/gh-pages.zip"
 # ZIPURL="https://codeload.github.com/Dreamacro/clash-dashboard/zip/refs/heads/gh-pages"
-# ZIPURL="https://github.com/Dreamacro/clash-dashboard/archive/gh-pages.zip"
 # ZIP="clash-dashboard-gh-pages.zip"
 # ZIPROOT="clash-dashboard-gh-pages"
 

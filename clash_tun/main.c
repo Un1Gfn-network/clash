@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <curl/curl.h> // curl_global_init() curl_global_cleanup()
 #include <fcntl.h>
 #include <netinet/in.h> // INET_ADDRSTRLEN
 #include <signal.h>
@@ -117,6 +118,13 @@ void read_r(){
 }*/
 
 int main(const int argc,const char **argv){
+
+  // char *s=now();
+  // puts(s);
+  // free(s);s=NULL;
+  // // free(now());
+  // exit(0);
+
   privilege_drop();
 
   // assert(
@@ -125,18 +133,16 @@ int main(const int argc,const char **argv){
   //   (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
   // );
   // char *yaml_path=provider2path(argv[1]);
-
   assert(argc==1&&argv[1]==NULL);
   char *yaml_path=provider2path("ssrcloud");
 
-  char *server_title=current_server_title();
+  assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
+  char *server_title=now();
   printf("\'%s\'\n",server_title);
   yaml2profile(yaml_path,server_title);
   profile2json(server_title);
-  free(server_title);
-  free(yaml_path);
-  server_title=NULL;
-  yaml_path=NULL;
+  free(server_title);server_title=NULL;
+  free(yaml_path);yaml_path=NULL;
 
   // (1/3) DNS
   bus_init();
@@ -176,6 +182,8 @@ int main(const int argc,const char **argv){
   // assert(profile_loaded());
   // profile_clear();
   // assert(!profile_loaded());
+
+  curl_global_cleanup();
 
   return 0;
 
