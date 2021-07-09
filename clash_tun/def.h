@@ -28,3 +28,5 @@
 // #define TIMEOUT 0 // Drops any connection instantly in newer versions
 // #define TIMEOUT 60 // Default
 #define TIMEOUT 7 // Default
+
+#define YAML_PATH "/tmp/clash/config.yaml"

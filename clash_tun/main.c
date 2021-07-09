@@ -22,17 +22,6 @@
 
 char gw[INET_ADDRSTRLEN]={};
 
-static inline char *provider2path(const char *const provider){
-  assert(provider);
-  const char *l="/home/darren/.clash/";
-  const char *r="/config.yaml";
-  char *ret=calloc((strlen(l)+strlen(r)+strlen(provider)+1),1);
-  strcat(ret,l);
-  strcat(ret,provider);
-  strcat(ret,r);
-  return ret;
-}
-
 static inline pid_t start_badvpn(){
   const pid_t f=fork();
   if(f>=1){
@@ -119,6 +108,9 @@ void read_r(){
 
 int main(const int argc,const char **argv){
 
+  // Required by now()
+  assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
+
   // char *s=now();
   // puts(s);
   // free(s);s=NULL;
@@ -127,22 +119,13 @@ int main(const int argc,const char **argv){
 
   privilege_drop();
 
-  // assert(
-  //   argc==2 &&
-  //   argv[1] &&
-  //   (0==strcmp(argv[1],"rixcloud")||0==strcmp(argv[1],"ssrcloud"))
-  // );
-  // char *yaml_path=provider2path(argv[1]);
   assert(argc==1&&argv[1]==NULL);
-  char *yaml_path=provider2path("ssrcloud");
 
-  assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
   char *server_title=now();
   printf("\'%s\'\n",server_title);
-  yaml2profile(yaml_path,server_title);
+  yaml2profile(YAML_PATH,server_title);
   profile2json(server_title);
   free(server_title);server_title=NULL;
-  free(yaml_path);yaml_path=NULL;
 
   // (1/3) DNS
   bus_init();

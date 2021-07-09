@@ -98,12 +98,27 @@ static inline json_object *json_get(const char *const s){
     char *ss=curl_easy_escape(c,s,0);
     curl_easy_cleanup(c);c=NULL;
     assert(ss&&strlen(ss));
-    char t[SZ]={};
-    sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,ss);
-    // sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,s);
-    // assert(0==strcmp("400 Bad Request",buf));
+
+    // char t[SZ]={};
+    // sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,ss);
+    // curl_free(ss);ss=NULL;
+    // // sprintf(t,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,s);
+    // // assert(0==strcmp("400 Bad Request",buf));
+    // buf_get(t);
+
+    // https://stackoverflow.com/a/21884334
+    char *t=NULL;
+    size_t sizeloc=-1;
+    FILE *f=open_memstream(&t,&sizeloc);
+    assert(f);
+    fprintf(f,"http://127.0.0.1:%u/proxies/%s",RESTFUL_PORT,ss);
     curl_free(ss);ss=NULL;
+    fflush(f);
+    fclose(f);
     buf_get(t);
+    free(t);t=NULL;
+    sizeloc=0;
+
   }else{
     buf_get("http://127.0.0.1:"xstr(RESTFUL_PORT)"/proxies/GLOBAL");
   }
