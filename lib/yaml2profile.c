@@ -1,15 +1,13 @@
 #include <assert.h>
 #include <yaml.h>
-#include <libclash.h> // resolv()
 
-#include "./yaml2profile.h"
+#include <libclash.h> // resolv() // Header of resolv.c restful.c yaml2profile.c
 
 #define SCAN() assert(1==yaml_parser_scan(&parser,&token))
 #define DEL() yaml_token_delete(&token);token=(yaml_token_t){}
 #define TYPE(T) assert(token.type==T)
 #define VAL ((const char*)(token.data.scalar.value))
 #define CMP(S) strcmp(VAL,S)
-// #define LAMBDA(X) ({ X f;})
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
 static yaml_parser_t parser={};

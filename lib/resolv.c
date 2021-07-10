@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h> // strcmp()
 
-#include <libclash.h> // Header of resolv.c and restful.c
+#include <libclash.h> // Header of resolv.c restful.c yaml2profile.c
 
 #define common23(IT,P,RET) assert( !(IT->ai_canonname) && strcmp(RET,inet_ntoa(P->sin_addr))==0 )
 

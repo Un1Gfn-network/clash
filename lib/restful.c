@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <libclash.h>
+#include <libclash.h> // Header of resolv.c restful.c yaml2profile.c
 
 #define SZ 1024
 

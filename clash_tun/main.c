@@ -7,7 +7,7 @@
 #include <stdlib.h> // free()
 #include <unistd.h> // fork() getuid() close() STDOUT_FILENO dup2() execl() sleep
 
-#include <libclash.h> // Header of resolv.c and restful.c
+#include <libclash.h>
 
 #include "./bus.h"
 #include "./def.h"
@@ -17,7 +17,6 @@
 #include "./privilege.h"
 #include "./proc.h"
 #include "./profile.h"
-#include "./yaml2profile.h"
 #include "./shadowsocks2.h"
 
 char gw[INET_ADDRSTRLEN]={};
