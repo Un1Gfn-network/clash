@@ -4,7 +4,8 @@
 
 extern profile_t profile;
 
-void profile_inspect();
+// Moved to lib/yaml2profile.c
+// void profile_inspect();
 
 bool profile_loaded();
 

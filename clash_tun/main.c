@@ -136,7 +136,7 @@ int main(const int argc,const char **argv){
   assert(!profile_loaded());
   yaml2profile(true,&profile,YAML_PATH,name);
   assert(profile_loaded());
-  // profile_inspect();
+  // profile_inspect(&profile);
   try_unlink(SS_LOCAL_JSON);
   profile_to_json(name);
   free(name);name=NULL;

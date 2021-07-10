@@ -8,6 +8,7 @@
 
 // yaml2profile.c
 void yaml2profile(const bool,profile_t *const,const char *const,const char *const);
+void profile_inspect();
 
 // resolv.c
 char *resolv(const char *domain);

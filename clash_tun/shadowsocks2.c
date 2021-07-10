@@ -32,7 +32,7 @@ static void *start_routine(void *arg){
   printf("starting ss\n");
 
   // Show profile w/ lots of printf()
-  // profile_inspect();
+  // profile_inspect(&profile);
 
   if(-1==start_ss_local_server_with_callback(profile,callback,NULL)){
     // Failed

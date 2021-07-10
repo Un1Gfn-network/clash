@@ -90,26 +90,6 @@ void profile_clear(){
 #undef S2
 #undef I0
 
-void profile_inspect(){
-  printf("\n");
-  printf("remote_host = %s\n",profile.remote_host);
-  printf("local_addr  = %s\n",profile.local_addr);
-  printf("method      = %s\n",profile.method);
-  printf("password    = %s\n",profile.password);
-  printf("remote_port = %d\n",profile.remote_port);
-  printf("local_port  = %d\n",profile.local_port);
-  printf("timeout     = %d\n",profile.timeout);
-  printf("\n");
-  printf("acl       = %s\n",profile.acl?profile.acl:"NULL");
-  printf("log       = %s\n",profile.log?profile.log:"NULL");
-  printf("fast_open = %d\n",profile.fast_open);
-  printf("mode      = %d\n",profile.mode);
-  printf("mtu       = %d\n",profile.mtu);
-  printf("mptcp     = %d\n",profile.mptcp);
-  printf("verbose   = %d\n",profile.verbose);
-  printf("\n");
-}
-
 // Diagnose
 // Better (not applicable here) https://stackoverflow.com/a/3168470
 // puts(type());
