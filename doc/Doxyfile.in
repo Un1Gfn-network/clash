@@ -864,16 +864,19 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = @top_srcdir@/clash_misc/ \
-                         @top_srcdir@/clash_tun/ \
-                         @top_srcdir@/include/ \
+INPUT                  = @top_srcdir@/include/ \
                          @top_srcdir@/lib/ \
-                         /usr/include/curl/curl.h \
-                         /usr/include/glib-2.0/gmodule.h \
-                         /usr/include/json-c/json.h \
-                         /usr/include/pthread.h \
-                         /usr/include/shadowsocks.h \
-                         /usr/include/yaml.h
+                         @top_srcdir@/clash_misc/ \
+                         @top_srcdir@/clash_sip002/ \
+                         @top_srcdir@/clash_tun/ \
+                         /dev/null
+                         
+                         # /usr/include/curl/curl.h \
+                         # /usr/include/glib-2.0/gmodule.h \
+                         # /usr/include/json-c/json.h \
+                         # /usr/include/pthread.h \
+                         # /usr/include/shadowsocks.h \
+                         # /usr/include/yaml.h
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

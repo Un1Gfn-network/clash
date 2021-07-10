@@ -121,11 +121,12 @@ int main(const int argc,const char **argv){
 
   assert(argc==1&&argv[1]==NULL);
 
-  char *server_title=now();
-  printf("\'%s\'\n",server_title);
-  yaml2profile(YAML_PATH,server_title);
-  profile2json(server_title);
-  free(server_title);server_title=NULL;
+  // Get current active node from clash RESTful API
+  char *name=now();
+  printf("\'%s\'\n",name);
+  yaml2profile(YAML_PATH,name);
+  profile2json(name);
+  free(name);name=NULL;
 
   // (1/3) DNS
   bus_init();

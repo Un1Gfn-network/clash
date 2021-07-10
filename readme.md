@@ -6,6 +6,12 @@
 
 ---
 
+<del>YAML_PATH -&gt; libclash.h -&gt; #include &lt;libclash.h&gt; </del> \
+YAML_PATH -&gt; clash_tun/def.h -&gt; #include &lt;def.h&gt; </del>
+
+<del>RESTFUL_PORT -&gt; AC_ARG_VAR() -&gt; -DRESTFUL_PORT=$(RESTFUL_PORT)</del> \
+RESTFUL_PORT -&gt; AC_ARG_VAR() -&gt; AC_DEFINE_UNQUOTED() -&gt; -I $(top_builddir) -&gt; #include &lt;config.h&gt;
+
 ## Doxygen
 
 https://stackoverflow.com/a/42479100
@@ -25,21 +31,8 @@ configure.ac [`AC_DEFINE(X...)`](https://www.gnu.org/software/autoconf/manual/au
 configure.ac [`AC_ARG_VAR(X...)`](https://www.gnu.org/software/autoconf/manual/autoconf-2.70/html_node/Setting-Output-Variables.html#index-AC_005fARG_005fVAR-1) + `./configure ...=...` &rArr;\
 &bullet; `X` is AC_SUBST'ed &nbsp; (use `$(X)` manually in Makefile.am)
 
-    cd "$(git rev-parse --show-toplevel)" && \
-    git clean -dfX && \
     git status --ignored
-<!-- -->
-    cd "$(git rev-parse --show-toplevel)" && \
-    autoreconf -v -i -Wall
-<!-- -->
-    cd "$(git rev-parse --show-toplevel)"/build && \
-    ../configure \
-      --prefix=/usr/local \
-      CFLAGS="-std=gnu11 -g -O0 -Wall -Wextra -Wno-unused-parameter -Winline -Wshadow -D_GNU_SOURCE" \
-      LIBTOOLFLAGS="-v --no-silent"
-<!-- -->
-    cd "$(git rev-parse --show-toplevel)"/build
-    make --no-print-directory all
+    ~/clash/rebuild.sh
 <!-- -->
     cd "$(git rev-parse --show-toplevel)"/build
     rm -rf /tmp/x && make --no-print-directory DESTDIR=/tmp/x install && tree -aC /tmp/x

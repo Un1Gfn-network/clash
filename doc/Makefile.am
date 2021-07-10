@@ -11,7 +11,7 @@ html/: Doxyfile
 	$(DOXYGEN) $^
 	@test -f html/index.html
 	@echo
-	@printf "  " && realpath html/index.html
+	@printf "  file://%s\n" "$$(realpath html/index.html)"
 	@echo
 
 clean-local:

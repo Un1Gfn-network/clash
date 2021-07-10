@@ -1,3 +1,5 @@
+#include <config.h> // RESTFUL_PORT
+
 #include <assert.h>
 #include <curl/curl.h>
 #include <json.h>

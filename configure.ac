@@ -13,6 +13,7 @@ AC_CONFIG_MACRO_DIRS([m4])
 # https://clash.gitbook.io/doc/restful-api
 AC_ARG_VAR(RESTFUL_PORT,[external-controller: [9090]])
 test "x$RESTFUL_PORT" = "x" && RESTFUL_PORT=9090
+AC_DEFINE_UNQUOTED([RESTFUL_PORT], [$RESTFUL_PORT], [external-controller: [9090]])
 
 # Checks for programs.
 AC_PROG_CC([gcc])
@@ -34,6 +35,7 @@ PKG_CHECK_MODULES(LIBPROCPS, libprocps = 3.3.17)
 PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd = 248)
 PKG_CHECK_MODULES(LIBYAML, yaml-0.1 = 0.2.5)
 PKG_CHECK_MODULES(SSLIBEV, shadowsocks-libev = 3.3.5)
+PKG_CHECK_MODULES(LIBCRYPTO, libcrypto = 1.1.1k)
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h strings.h sys/ioctl.h sys/socket.h unistd.h])
@@ -106,12 +108,13 @@ fi
 # Output
 AC_CONFIG_FILES([
   Makefile
-  clash_misc/Makefile
-  clash_tun/Makefile
   include/Makefile
   lib/Makefile
-  doc/Doxyfile
+  clash_misc/Makefile
+  clash_sip002/Makefile
+  clash_tun/Makefile
   doc/Makefile
+  doc/Doxyfile
 ])
 AC_OUTPUT
 
