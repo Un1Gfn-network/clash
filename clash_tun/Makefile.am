@@ -26,13 +26,15 @@ noinst_LIBRARIES = \
 	ioctl.a \
 	proc.a \
 	profile.a \
+	yaml2profile.a \
 	shadowsocks2.a
 
 main_a_CFLAGS = -I$(top_srcdir)/include
 bus_a_CFLAGS = $(LIBSYSTEMD_CFLAGS)
 ioctl_a_CFLAGS = $(LIBBSD_CFLAGS)
 proc_a_CFLAGS = $(LIBPROCPS_CFLAGS)
-profile_a_CFLAGS = $(JSONC_CFLAGS) $(LIBYAML_CFLAGS) $(SSLIBEV_CFLAGS) -I$(top_srcdir)/include
+profile_a_CFLAGS = $(JSONC_CFLAGS) $(SSLIBEV_CFLAGS) -I$(top_srcdir)/include
+yaml2profile_a_CFLAGS = $(LIBYAML_CFLAGS) $(SSLIBEV_CFLAGS) -I$(top_srcdir)/include
 shadowsocks2_a_CFLAGS = $(SSLIBEV_CFLAGS)
 
 # https://www.gnu.org/software/automake/manual/html_node/Per_002dObject-Flags.html

@@ -1,12 +1,10 @@
-#include <arpa/inet.h>
+#include <arpa/inet.h> // inet_ntoa()
 #include <assert.h>
-#include <netdb.h>
-#include <stdbool.h>
+#include <netdb.h> // getaddrinfo() // struct addrinfo
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <string.h> // strcmp()
 
-#include "./resolv.h"
+#include <libclash.h> // Header of resolv.c and restful.c
 
 #define common23(IT,P,RET) assert( !(IT->ai_canonname) && strcmp(RET,inet_ntoa(P->sin_addr))==0 )
 
@@ -26,7 +24,7 @@ static inline const struct sockaddr_in *common123(const struct addrinfo *const i
   return p;
 }
 
-
+// Returns dynamically allocated string
 char *resolv(const char *domain){
 
   // Load
@@ -38,7 +36,7 @@ char *resolv(const char *domain){
   },&res);
   if(errcode!=0){
     printf("%s\n",gai_strerror(errcode));
-    assert(false);
+    assert(0);
   }
 
   // First

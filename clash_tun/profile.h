@@ -1,7 +1,6 @@
 #pragma once
 
-#include <shadowsocks.h>
-#include <stdbool.h>
+#include <shadowsocks.h> // profile_t
 
 extern profile_t profile;
 
@@ -11,6 +10,4 @@ bool profile_loaded();
 
 void profile_clear();
 
-void yaml2profile(const char *const from_yaml,const char *const server_title);
-
-void profile2json();
+void profile_to_json();

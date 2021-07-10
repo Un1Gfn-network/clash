@@ -1,14 +1,13 @@
 #include <assert.h>
 #include <curl/curl.h> // curl_global_init() curl_global_cleanup()
-#include <fcntl.h>
+#include <fcntl.h> // open()
 #include <netinet/in.h> // INET_ADDRSTRLEN
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdlib.h> // free()
+#include <unistd.h> // fork() getuid() close() STDOUT_FILENO dup2() execl() sleep
 
-#include <libclash.h>
+#include <libclash.h> // Header of resolv.c and restful.c
 
 #include "./bus.h"
 #include "./def.h"
@@ -18,6 +17,7 @@
 #include "./privilege.h"
 #include "./proc.h"
 #include "./profile.h"
+#include "./yaml2profile.h"
 #include "./shadowsocks2.h"
 
 char gw[INET_ADDRSTRLEN]={};
@@ -108,7 +108,7 @@ void read_r(){
 
 int main(const int argc,const char **argv){
 
-  // Required by now()
+  // Required by now() and resolv()
   assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
 
   // char *s=now();
@@ -124,8 +124,12 @@ int main(const int argc,const char **argv){
   // Get current active node from clash RESTful API
   char *name=now();
   printf("\'%s\'\n",name);
-  yaml2profile(YAML_PATH,name);
-  profile2json(name);
+
+  assert(!profile_loaded());
+  yaml2profile(true,&profile,YAML_PATH,name);
+  assert(profile_loaded());
+  // profile_inspect();
+  profile_to_json(name);
   free(name);name=NULL;
 
   // (1/3) DNS
