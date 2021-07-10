@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <curl/curl.h> // curl_global_init() curl_global_cleanup()
+#include <errno.h> // errno
 #include <fcntl.h> // open()
 #include <netinet/in.h> // INET_ADDRSTRLEN
 #include <signal.h>
@@ -11,7 +12,6 @@
 
 #include "./bus.h"
 #include "./def.h"
-#include "./file.h"
 #include "./ioctl.h"
 #include "./netlink.h"
 #include "./privilege.h"
@@ -19,7 +19,7 @@
 #include "./profile.h"
 #include "./shadowsocks2.h"
 
-char gw[INET_ADDRSTRLEN]={};
+static char gw[INET_ADDRSTRLEN]={};
 
 static inline pid_t start_badvpn(){
   const pid_t f=fork();
@@ -34,7 +34,6 @@ static inline pid_t start_badvpn(){
     // https://stackoverflow.com/a/1777294/
     assert(1000==geteuid());
     assert(f==0);
-    try_unlink(TUN_LOG);
     printf("badvpn-tun2socks running, log \'%s\'\n",TUN_LOG);
     // int fd=create(TUN_LOG,0644);
     int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC,0644);
@@ -63,7 +62,7 @@ static inline pid_t start_badvpn(){
   }
 }
 
-void set(){
+static inline void set(){
 
   ioctl_tun_create(TUN);
   netlink_tun_addr(TUN,"10.0.0.1",24);
@@ -78,7 +77,7 @@ void set(){
 
 }
 
-void reset(){
+static inline void reset(){
 
   netlink_del_route(WLO,profile.remote_host,gw);
 
@@ -91,12 +90,22 @@ void reset(){
 
 }
 
-void read_r(){
+static inline void read_r(){
   printf("<Press Enter to Terminate> ");fflush(stdout);
   char s[SZ]={};
   // sleep(1);
   assert(s==fgets(s,SZ,stdin));
 }
+
+static inline void try_unlink(const char *const f){
+   const int i=unlink(f);
+   if(i==-1){
+     assert(errno=ENOENT);
+   }else{
+     assert(i==0);
+     printf("removed \'%s\'\n",f);
+   }
+ }
 
 /*int main(){
   netlink_init();
@@ -128,6 +137,7 @@ int main(const int argc,const char **argv){
   yaml2profile(true,&profile,YAML_PATH,name);
   assert(profile_loaded());
   // profile_inspect();
+  try_unlink(SS_LOCAL_JSON);
   profile_to_json(name);
   free(name);name=NULL;
 
@@ -139,11 +149,13 @@ int main(const int argc,const char **argv){
   // (2/3) Shadowsocks
   kill_sync("clash");
   assert(profile_loaded());
+  try_unlink(SS_LOG);
   assert(start_ss());
 
   // (3/3) TUN & route
   netlink_init();
   set();
+  try_unlink(TUN_LOG);
   pid_t f=start_badvpn();
 
   // Impossible to know when badvpn-tun2socks becomes ready for SIGINT without inspecting its code

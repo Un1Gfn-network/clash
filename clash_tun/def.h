@@ -29,4 +29,5 @@
 // #define TIMEOUT 60 // Default
 #define TIMEOUT 7 // Default
 
-#define YAML_PATH "/tmp/clash/config.yaml"
+// Moved to libclash.h
+// #define YAML_PATH

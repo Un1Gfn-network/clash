@@ -9,7 +9,6 @@
 #include <shadowsocks.h> // profile_t
 
 #include "./def.h"
-#include "./file.h" // try_unlink()
 #include "./shadowsocks2.h"
 
 #include "./profile.h"
@@ -195,7 +194,6 @@ void profile_to_json(const char *const server_title){
   appendjson(root,"fast_open"    ,"true");assert(profile.fast_open);
   appendjson(root,"mode"         ,"tcp_and_udp");assert(profile.mode);
   // assert(0==json_object_to_fd(STDOUT_FILENO,root,JSON_C_TO_STRING_PRETTY|JSON_C_TO_STRING_SPACED));
-  try_unlink(SS_LOCAL_JSON);
   assert(0==json_object_to_file_ext(
     SS_LOCAL_JSON,
     root,

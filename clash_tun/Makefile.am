@@ -41,7 +41,6 @@ shadowsocks2_a_CFLAGS = $(SSLIBEV_CFLAGS)
 bin_PROGRAMS = clash_tun
 
 clash_tun_SOURCES = \
-	file.c \
 	netlink.c \
 	privilege.c \
 	status.c

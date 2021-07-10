@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #include "./def.h"
-#include "./file.h"
 #include "./profile.h"
 #include "./shadowsocks2.h"
 #include "./status.h"
@@ -30,7 +29,6 @@ static void callback(int socks_fd, int udp_fd,void *data){
 
 static void *start_routine(void *arg){
   assert(!arg);
-  try_unlink(SS_LOG);
   printf("starting ss\n");
 
   // Show profile w/ lots of printf()
