@@ -1,27 +1,84 @@
 #include <assert.h>
 #include <libclash.h>
-#include <openssl/evp.h>
+#include <openssl/evp.h> // EVP_EncodeBlock()
 #include <string.h>
 #include <unistd.h> // fork()
 #include <sys/stat.h> // stat()
+#include <sys/stat.h> // stat()
+#include <qrencode.h>
 
 #define SZ 1024
 
-static inline void base64encode(char *const dest,const char *const src,const int n){
+// libqrencode+Unicode
 
-  EVP_ENCODE_CTX *ctx=EVP_ENCODE_CTX_new();assert(ctx);
-  EVP_EncodeInit(ctx);
+// https://github.com/fukuchi/libqrencode/blob/77de38effc5128cdbf4f765923dafb81f3694276/qrenc.c#L833
+// 1 = F = white = solid
+// 0 = E = black = whitespace
+//     //    //   //     //  //              // Upper Lower
+static const char *const F = " ";            //   1     1
+static const char *const U = "\342\226\204"; //   1     0
+static const char *const D = "\342\226\200"; //   0     1
+static const char *const E = "\342\226\210"; //   0     0
 
-  const int r=EVP_EncodeBlock((unsigned char*)dest,(const unsigned char*)src,n);
-  assert(r>=4&&r%4==0);
+static const int margin=4;
 
-  assert(0==EVP_ENCODE_CTX_num(ctx));
-  EVP_ENCODE_CTX_free(ctx);ctx=NULL;
+static char *SS_URI=NULL;
+static QRcode *q=NULL;
 
+// const unsigned char (*a)[q->width]=((unsigned char(*)[q->width])(q->data));
+// #define A(Q) ((unsigned char(*)[Q->width])(Q->data))
+#define A ((unsigned char(*)[q->width])(q->data))
+
+#define qr_unicode_lone_head(R) qr_unicode_lone(false)
+#define qr_unicode_lone_tail(R) qr_unicode_lone(true)
+static inline void qr_unicode_lone(const bool head){
+  for(int c=0;c<margin;++c)printf(E);
+  if(head)for(int c=0;c<(q->width);++c)printf("%s",((A[0][c])&1u)?         U:E);
+  else    for(int c=0;c<(q->width);++c)printf("%s",((A[q->width-1][c])&1u)?D:E);
+  for(int c=0;c<margin;++c)printf(E);
+  puts("");
+}
+
+static inline void qr_unicode_duo_empty(){
+  for(int c=0;c<margin+(q->width)+margin;++c)
+    printf("%s",E);
+  puts("");
+}
+
+static inline void qr_unicode_duo(const int r0,const int r1){
+  assert( 0<=r0 && r0+1==r1 && r1<=(q->width)-1 );
+  for(int c=0;c<margin;++c)printf(E);
+  for(int c=0;c<(q->width);++c){
+    switch( ((A[r0][c]&1u)<<4) | (A[r1][c]&1u) ){
+      case 0x11: printf("%s",F); break;
+      case 0x10: printf("%s",U); break;
+      case 0x01: printf("%s",D); break;
+      case 0x00: printf("%s",E); break;
+      default:   assert(0); break;
+    }
+  }
+  for(int c=0;c<margin;++c)printf(E);
+  puts("");
+}
+
+static inline void qr_unicode(){
+  printf("m=%d w=%d\n",margin,q->width);
+  for(int r=0;r<margin/2;++r)
+    qr_unicode_duo_empty();
+  if(margin%2){
+    qr_unicode_lone_head();
+    for(int rr=0;rr<(((q->width)-1)/2);++rr) qr_unicode_duo(2*rr+1,2*rr+2);
+    if(((q->width)-1)%2)                     qr_unicode_lone_tail();
+  }else{
+    for(int rr=0;rr<((q->width)/2);    ++rr) qr_unicode_duo(2*rr,2*rr+1);
+    if((q->width)%2)                         qr_unicode_lone_tail();
+  }
+  for(int r=0;r<(margin+(margin+(q->width)+1)%2)/2;++r)
+    qr_unicode_duo_empty();
 }
 
 // execl+qrencode
-static inline void qr(const char *const uri){
+static inline void qr_execl(const char *const uri){
   // system();
   pid_t i=fork();
   if(0==i){
@@ -46,24 +103,34 @@ static inline void qr(const char *const uri){
 
 // libqrencode+fbdev
 // https://gist.github.com/Un1Gfn/59998ce82e1fc0e53519c5a676f63716
-// static inline void qr(const char *const uri){}
+// static inline void qr_fbdev(){}
 
 // libqrencode+BMP
 // https://stackoverflow.com/questions/2654480/writing-bmp-image-in-pure-c-c-without-other-libraries
-// static inline void qr(const char *const uri){}
-
-// libqrencode+Unicode
-// https://github.com/fukuchi/libqrencode/blob/77de38effc5128cdbf4f765923dafb81f3694276/qrenc.c#L833
-// static inline void qr(const char *const uri){
-//   static const char *const E = " ";
-//   static const char *const L = "\342\226\204";
-//   static const char *const U = "\342\226\200";
-//   static const char *const F = "\342\226\210";
-
-// }
+// static inline void qr_bmp(){}
 
 // libqrencode+SDL+OpenGL
-// static inline void qr(const char *const uri){}
+// static inline void qr_opengl(){}
+
+// gnutls_base64_encode2(3)
+// gnutls_pem_base64_encode(3)
+// gnutls_pem_base64_encode2(3)
+// EVP_ENCODEINIT(3) EVP_EncodeBlock()
+// https://stackoverflow.com/questions/342409/how-do-i-base64-encode-decode-in-c
+// https://developer.gnome.org/glib/stable/glib-Base64-Encoding.html
+// https://stackoverflow.com/questions/5288076/base64-encoding-and-decoding-with-openssl
+static inline void base64encode(char *const dest,const char *const src,const int n){
+
+  EVP_ENCODE_CTX *ctx=EVP_ENCODE_CTX_new();assert(ctx);
+  EVP_EncodeInit(ctx);
+
+  const int r=EVP_EncodeBlock((unsigned char*)dest,(const unsigned char*)src,n);
+  assert(r>=4&&r%4==0);
+
+  assert(0==EVP_ENCODE_CTX_num(ctx));
+  EVP_ENCODE_CTX_free(ctx);ctx=NULL;
+
+}
 
 int main(){
 
@@ -85,7 +152,6 @@ int main(){
   puts(userinfo);
 
   // "ss://" userinfo "@" hostname ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]
-  char *SS_URI=NULL;
   asprintf(&SS_URI,"ss://%s@%s:%d#%s",
     userinfo,
     p.remote_host,
@@ -93,11 +159,24 @@ int main(){
     // name);
     "test");
   free(name);name=NULL;
-
   puts(SS_URI);
-  qr(SS_URI);
-  free(SS_URI);SS_URI=NULL;
 
+  // A
+  // qr_execl();
+
+  // B
+  q=QRcode_encodeString(SS_URI, 0, QR_ECLEVEL_L /*QR_ECLEVEL_H*/, QR_MODE_8, 1);
+  assert(5==q->version); // printf("%d\n",q->version);
+  // printf("%d\n",q->width);
+  //
+  qr_unicode();
+  // qr_fbdev();
+  // qr_bmp();
+  // qr_opengl();
+  //
+  QRcode_free(q);q=NULL;
+
+  free(SS_URI);SS_URI=NULL;
   free(p.remote_host);p.remote_host=NULL;
   free(p.method);p.method=NULL;
   free(p.password);p.password=NULL;
@@ -105,3 +184,4 @@ int main(){
   return 0;
 
 }
+ 
