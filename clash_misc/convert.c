@@ -23,16 +23,18 @@
 // #define FILENAME "/home/darren/yaml/01_rixcloud.yaml"
 // #define FILENAME "/home/darren/yaml/01_ssrcloud.yaml"
 
-#define EMIT() assert(1==yaml_emitter_emit(&emitter, &event))
 #define eprintf(...) fprintf(stderr,__VA_ARGS__)
-#define SCAN() assert(1==yaml_parser_scan(&parser,&token))
-#define DEL() {yaml_token_delete(&token);token=(yaml_token_t){};}
-#define SCALAR(S) {yaml_scalar_event_initialize(&event,NULL,(yaml_char_t*)YAML_STR_TAG,(const yaml_char_t*)S,strlen(S),1,1,YAML_PLAIN_SCALAR_STYLE /*YAML_SINGLE_QUOTED_SCALAR_STYLE*/);EMIT();}
-#define SEQ_START() {yaml_sequence_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_SEQ_TAG,1,YAML_BLOCK_SEQUENCE_STYLE /*YAML_ANY_SEQUENCE_STYLE*/);EMIT();}
-#define SEQ_END() {yaml_sequence_end_event_initialize(&event);EMIT();}
-#define MAP_START() {yaml_mapping_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_MAP_TAG,1,YAML_BLOCK_MAPPING_STYLE /*YAML_ANY_MAPPING_STYLE*/);EMIT();}
-#define MAP_END() {yaml_mapping_end_event_initialize(&event);EMIT();}
 #define LAMBDA(X) ({ X f;})
+
+#define SCAN() assert(1==yaml_parser_scan(&parser,&token))
+#define DEL() yaml_token_delete(&token);token=(yaml_token_t){}
+
+#define EMIT()      assert(1==yaml_emitter_emit(&emitter, &event))
+#define SCALAR(S)   assert(S);yaml_scalar_event_initialize(&event,NULL,(yaml_char_t*)YAML_STR_TAG,(const yaml_char_t*)S,strlen(S),1,1,YAML_PLAIN_SCALAR_STYLE /*YAML_SINGLE_QUOTED_SCALAR_STYLE*/);EMIT()
+#define MAP_END()   yaml_mapping_end_event_initialize(&event);EMIT()
+#define SEQ_END()   yaml_sequence_end_event_initialize(&event);EMIT()
+#define MAP_START() yaml_mapping_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_MAP_TAG,1,YAML_BLOCK_MAPPING_STYLE /*YAML_ANY_MAPPING_STYLE*/);EMIT()
+#define SEQ_START() yaml_sequence_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_SEQ_TAG,1,YAML_BLOCK_SEQUENCE_STYLE /*YAML_ANY_SEQUENCE_STYLE*/);EMIT()
 
 #ifdef FILENAME
 static FILE *file=NULL;
@@ -139,16 +141,27 @@ static void emitter_begin(){
   EMIT();
   MAP_START();
   emit_scalar(
-    "port","8080",
-    "socks-port","1080",
-    "allow-lan","true",
-    "mode","Global",
-    "log-level","info",
-    "external-controller","127.0.0.1:"xstr(RESTFUL_PORT), // yacd updated defaults
-    // "external-controller","\'127.0.0.1:6170\'",
-    "secret","",
+    "port", "8080",
+    "socks-port", "1080",
+    "allow-lan", "true",
+    "bind-address", "*",
+    "mode", "global",
+    "log-level", "info",
+    "ipv6", "false",
+    "external-controller", "127.0.0.1:"xstr(RESTFUL_PORT), // yacd updated defaults
+    // https://github.com/haishanh/yacd/issues/612
+    // Access at "http://127.0.0.1:RESTFUL_PORT/ui/index.html"
+    "external-ui", "/tmp/yacd-gh-pages",
+    "secret", "",
+    // "interface-name", get_gateway_iface(),
     NULL
   );
+  SCALAR("profile");MAP_START();
+    SCALAR("store-selected");SCALAR("false");
+  MAP_END();
+  SCALAR("dns");MAP_START();
+    SCALAR("enable");SCALAR("false");
+  MAP_END();
 }
 
 static void emitter_end(){
