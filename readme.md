@@ -6,6 +6,10 @@
 
 ---
 
+    diff -u \
+    <(/usr/local/bin/clash_convert </tmp/raw.yaml) \
+    <(env LD_LIBRARY_PATH=~/clash/build/lib/.libs/ ~/clash/build/clash_misc/clash_convert </tmp/raw.yaml)
+
 <del>YAML_PATH -&gt; libclash.h -&gt; #include &lt;libclash.h&gt; </del> \
 YAML_PATH -&gt; clash_tun/def.h -&gt; #include &lt;def.h&gt; </del>
 

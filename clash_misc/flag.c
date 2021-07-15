@@ -10,6 +10,7 @@
 
 // #define eprintf(...) fprintf(stderr,__VA_ARGS__)
 
+// Convert a character to a RIS character (half a country code)
 // https://en.wikipedia.org/wiki/Regional_indicator_symbol
 // wchar_t aka int
 wchar_t c2ris(const char c){
@@ -25,6 +26,27 @@ wchar_t c2ris(const char c){
   return r;
 }
 
+// Print one country code
+int cc2str(char *const s, const CC *const cc){
+  assert(s);
+  assert(cc);
+  if(0==memcmp(cc->c,"CN",2)||0==memcmp(cc->c,"MO",2)){
+    assert(3==sprintf(s,"\u2612")); // ☒
+    return 3;
+  }
+  if(0==memcmp(cc->c,"HK",2)){
+    // https://en.wikipedia.org/wiki/Specials_(Unicode_block)#Replacement_character
+    // https://www.fileformat.info/info/unicode/char/1f3f4/index.htm
+    // https://www.compart.com/en/unicode/U+1F3F4
+    assert(4==sprintf(s,"\U0001F3F4")); // 🏴
+    return 4;
+  }
+  assert(MB_CUR_RIS==wctomb(s,c2ris(cc->c[0])));
+  assert(MB_CUR_RIS==wctomb(s+MB_CUR_RIS,c2ris(cc->c[1])));
+  return (MB_CUR_RIS+MB_CUR_RIS);
+}
+
+// Print one or more country codes to a buffer
 void ccs2str(char *const dest, ...){
 
   bzero(dest,BUF_SZ);
@@ -40,22 +62,15 @@ void ccs2str(char *const dest, ...){
   while(NULL!=(p=(const CC*)va_arg(ap,const CC*))){
     // eprintf(" ------ %llu <= %llu\n",(long long unsigned)(s+MB_CUR_RIS+MB_CUR_MAX),(long long unsigned)(dest+BUF_SZ-1));
     assert( s>=dest && s+MB_CUR_RIS+MB_CUR_MAX+1<=dest+BUF_SZ-1 );
-    if(false){
-      ;
-    }else if(0==memcmp(p->c,"CN",2)||0==memcmp(p->c,"MO",2)){
-      assert(3==sprintf(s,"\u2612"));s+=3; // ☒
-    }else if(0==memcmp(p->c,"HK",2)){
-      // https://en.wikipedia.org/wiki/Specials_(Unicode_block)#Replacement_character
-      // https://www.fileformat.info/info/unicode/char/1f3f4/index.htm
-      // https://www.compart.com/en/unicode/U+1F3F4
-      assert(4==sprintf(s,"\U0001F3F4"));s+=4; // 🏴
-    }else{
-      assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[0])));s+=MB_CUR_RIS;
-      assert(MB_CUR_RIS==wctomb(s,c2ris(p->c[1])));s+=MB_CUR_RIS;
-    }
+    s=s+cc2str(s,p);
     *(s++)=' ';
     // eprintf("%ld\n",s-dest);
   }
+
+  // Remove trailing space
+  char *const printed_just_now=s-1;
+  if(printed_just_now>=dest&&' '==*printed_just_now)
+    s=printed_just_now;
 
   *s='\0';
 

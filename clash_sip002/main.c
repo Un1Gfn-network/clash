@@ -141,6 +141,7 @@ int main(){
   char *name=now();
   profile_t p={};
   yaml2profile(false,&p,YAML_PATH,name);
+  puts(name);
   // profile_inspect(&p);
 
   // method ':' password '\0'

@@ -151,6 +151,7 @@ static void emitter_begin(){
     "external-controller", "127.0.0.1:"xstr(RESTFUL_PORT), // yacd updated defaults
     // https://github.com/haishanh/yacd/issues/612
     // Access at "http://127.0.0.1:RESTFUL_PORT/ui/index.html"
+    // Groups are at the bottom of GLOBAL
     "external-ui", "/tmp/yacd-gh-pages",
     "secret", "",
     // "interface-name", get_gateway_iface(),
