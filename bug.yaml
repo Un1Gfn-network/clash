@@ -1,0 +1,37 @@
+port: 8080
+socks-port: 1080
+allow-lan: true
+bind-address: '*'
+mode: global
+log-level: info
+external-controller: 127.0.0.1:9090
+external-ui: /tmp/yacd-gh-pages
+proxies:
+- name: Node1
+  type: ss
+  server: node01.com
+  port: 10000
+  cipher: chacha20-ietf-poly1305
+  password: asdfghjkl
+  udp: true
+- name: Node2
+  type: ss
+  server: node02.com
+  port: 10000
+  cipher: chacha20-ietf-poly1305
+  password: asdfghjkl
+  udp: true
+- name: Node3
+  type: ss
+  server: node03.com
+  port: 10000
+  cipher: chacha20-ietf-poly1305
+  password: asdfghjkl
+  udp: true
+proxy-groups:
+- name: "GroupA"
+  type: select
+  proxies:
+  - Node1
+  - Node2
+  - Node3

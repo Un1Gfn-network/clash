@@ -121,10 +121,8 @@ case "$(basename "$0")" in
 
     uri="$1_uri"
 
-    clear_tmp
     echo
-    echo -n "  Please download ${!uri} to /tmp/raw.yaml "
-    read -r
+    read -erp "  Please download ${!uri} to /tmp/raw.yaml "
     echo
 
     cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }

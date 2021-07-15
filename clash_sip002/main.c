@@ -6,6 +6,8 @@
 #include <sys/stat.h> // stat()
 #include <sys/stat.h> // stat()
 #include <qrencode.h>
+#include <curl/curl.h> // curl_easy_escape()
+#include <readline/readline.h> // readline()
 
 #define SZ 1024
 
@@ -134,6 +136,8 @@ static inline void base64encode(char *const dest,const char *const src,const int
 
 int main(){
 
+  curl_global_init(CURL_GLOBAL_NOTHING); // yaml2profile() curl_easy_escape()
+
   char *name=now();
   profile_t p={};
   yaml2profile(false,&p,YAML_PATH,name);
@@ -151,14 +155,33 @@ int main(){
   puts(userinfo_raw);
   puts(userinfo);
 
+  // Tag (remark)
+  CURL *c=curl_easy_init();assert(c);
+  // printf("tag, leave empty to use node name: ");fflush(stdout);
+  // size_t n=-1;
+  // const ssize_t r=getline(&tag,&n,stdout);
+  char *tag=readline("tag (leave empty to use node name): ");assert(tag);
+  if('\0'==tag[0]){
+    // Empty input - use node name as tag
+    free(tag);tag=NULL;
+    tag=curl_easy_escape(c,name,0);
+  }else{
+    // Custom tag
+    char *tmp=tag;
+    tag=curl_easy_escape(c,tag,0);
+    free(tmp);tmp=NULL;
+  }
+  free(name);name=NULL;
+  curl_easy_cleanup(c);c=NULL;
+  assert(tag&&strlen(tag));
+
   // "ss://" userinfo "@" hostname ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]
   asprintf(&SS_URI,"ss://%s@%s:%d#%s",
     userinfo,
     p.remote_host,
     p.remote_port,
-    // name);
-    "test");
-  free(name);name=NULL;
+    tag);
+  free(tag);tag=NULL;
   puts(SS_URI);
 
   // A
@@ -166,7 +189,8 @@ int main(){
 
   // B
   q=QRcode_encodeString(SS_URI, 0, QR_ECLEVEL_L /*QR_ECLEVEL_H*/, QR_MODE_8, 1);
-  assert(5==q->version); // printf("%d\n",q->version);
+  printf("v%d\n",q->version);
+  assert(5<=q->version);
   // printf("%d\n",q->width);
   //
   qr_unicode();
@@ -180,6 +204,8 @@ int main(){
   free(p.remote_host);p.remote_host=NULL;
   free(p.method);p.method=NULL;
   free(p.password);p.password=NULL;
+
+  curl_global_cleanup();
 
   return 0;
 

@@ -68,7 +68,6 @@ static inline void buf_drop(){
   free(buf);
   buf=NULL;
   sz=0;
-  curl_global_cleanup();
 }
 
 #define field_string_assert(J,K,V) assert(0==strcmp(V,field_string_get(J,K)))

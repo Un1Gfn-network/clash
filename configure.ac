@@ -37,6 +37,7 @@ PKG_CHECK_MODULES(LIBYAML, yaml-0.1 = 0.2.5)
 PKG_CHECK_MODULES(SSLIBEV, shadowsocks-libev = 3.3.5)
 PKG_CHECK_MODULES(LIBCRYPTO, libcrypto = 1.1.1k)
 PKG_CHECK_MODULES(LIBQRENCODE, libqrencode = 4.1.1)
+PKG_CHECK_MODULES(READLINE, readline = 8.1)
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h strings.h sys/ioctl.h sys/socket.h unistd.h])
