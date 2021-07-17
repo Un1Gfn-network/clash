@@ -1,13 +1,14 @@
 #include <assert.h>
+#include <curl/curl.h> // curl_easy_escape()
 #include <libclash.h>
 #include <openssl/evp.h> // EVP_EncodeBlock()
-#include <string.h>
-#include <unistd.h> // fork()
-#include <sys/stat.h> // stat()
-#include <sys/stat.h> // stat()
 #include <qrencode.h>
-#include <curl/curl.h> // curl_easy_escape()
 #include <readline/readline.h> // readline()
+#include <stdio_ext.h> // __fpurge()
+#include <string.h>
+#include <sys/stat.h> // stat()
+#include <sys/stat.h> // stat()
+#include <unistd.h> // fork()
 
 #define SZ 1024
 
@@ -24,7 +25,6 @@ static const char *const E = "\342\226\210"; //   0     0
 
 static const int margin=4;
 
-static char *SS_URI=NULL;
 static QRcode *q=NULL;
 
 // const unsigned char (*a)[q->width]=((unsigned char(*)[q->width])(q->data));
@@ -64,7 +64,7 @@ static inline void qr_unicode_duo(const int r0,const int r1){
 }
 
 static inline void qr_unicode(){
-  printf("m=%d w=%d\n",margin,q->width);
+  // printf("m=%d w=%d\n",margin,q->width);
   for(int r=0;r<margin/2;++r)
     qr_unicode_duo_empty();
   if(margin%2){
@@ -134,81 +134,91 @@ static inline void base64encode(char *const dest,const char *const src,const int
 
 }
 
-int main(){
+//! Print QR code of SIP002 URI of current active node
+//! @param[in]   tagRaw   Provide NULL to use node title as tag
+static inline void sip002(const char *tagRaw){
 
-  curl_global_init(CURL_GLOBAL_NOTHING); // yaml2profile() curl_easy_escape()
+  // Pause if tagRaw is provided
+  if(tagRaw){
+    printf(" %s :",tagRaw);
+    getchar();__fpurge(stdin); // https://stackoverflow.com/a/2187514
+  }
 
-  char *name=now();
+  // Get current node title
+  char *title=now();assert(title&&strlen(title));
+  // tagRaw?puts(title):0;
+  puts(title);
   profile_t p={};
-  yaml2profile(false,&p,YAML_PATH,name);
-  puts(name);
+  yaml2profile(false,&p,YAML_PATH,title);
   // profile_inspect(&p);
 
-  // method ':' password '\0'
+  // Percent-encode tag
+  tagRaw?0:(tagRaw=title);
+  CURL *c=curl_easy_init();assert(c);
+  char *tag=curl_easy_escape(c,tagRaw,0);assert(tag&&strlen(tag));
+  curl_easy_cleanup(c);c=NULL;
+
+  // Concatenate method ':' password '\0'
   const size_t sz=strlen(p.method)+1+strlen(p.password)+1;
-  char userinfo_raw[sz];
-  bzero(userinfo_raw,sz);
+  char userinfo_raw[sz];bzero(userinfo_raw,sz);
   sprintf(userinfo_raw,"%s:%s",p.method,p.password);
   assert(userinfo_raw[sz-1]=='\0');
   assert(userinfo_raw[sz-2]!='\0');
   char userinfo[((sz-1)+2)/3*4+1];
   base64encode(userinfo,userinfo_raw,sz-1);
-  puts(userinfo_raw);
-  puts(userinfo);
+  // puts(userinfo_raw); // (A)
+  free(title);title=NULL;
 
-  // Tag (remark)
-  CURL *c=curl_easy_init();assert(c);
-  // printf("tag, leave empty to use node name: ");fflush(stdout);
-  // size_t n=-1;
-  // const ssize_t r=getline(&tag,&n,stdout);
-  char *tag=readline("tag (leave empty to use node name): ");assert(tag);
-  if('\0'==tag[0]){
-    // Empty input - use node name as tag
-    free(tag);tag=NULL;
-    tag=curl_easy_escape(c,name,0);
-  }else{
-    // Custom tag
-    char *tmp=tag;
-    tag=curl_easy_escape(c,tag,0);
-    free(tmp);tmp=NULL;
-  }
-  free(name);name=NULL;
-  curl_easy_cleanup(c);c=NULL;
-  assert(tag&&strlen(tag));
-
-  // "ss://" userinfo "@" hostname ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]
+  // Concatenate SIP002 URI "ss://" userinfo "@" hostname ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]
+  char *SS_URI=NULL;
   asprintf(&SS_URI,"ss://%s@%s:%d#%s",
     userinfo,
     p.remote_host,
     p.remote_port,
     tag);
-  free(tag);tag=NULL;
+  puts(userinfo_raw); // (B)
   puts(SS_URI);
+  free(tag);tag=NULL;
 
-  // A
+  // The following methods don't require QRcode_encodeString()
   // qr_execl();
 
-  // B
   q=QRcode_encodeString(SS_URI, 0, QR_ECLEVEL_L /*QR_ECLEVEL_H*/, QR_MODE_8, 1);
-  printf("v%d\n",q->version);
   assert(5<=q->version);
+  // printf("v%d\n",q->version);
   // printf("%d\n",q->width);
-  //
+
+  // The following methods require QRcode_encodeString()
   qr_unicode();
   // qr_fbdev();
   // qr_bmp();
   // qr_opengl();
-  //
-  QRcode_free(q);q=NULL;
 
+  // Clean up
+  QRcode_free(q);q=NULL;
   free(SS_URI);SS_URI=NULL;
   free(p.remote_host);p.remote_host=NULL;
   free(p.method);p.method=NULL;
   free(p.password);p.password=NULL;
 
+}
+
+int main(){
+
+  curl_global_init(CURL_GLOBAL_NOTHING); // For yaml2profile() and curl_easy_escape()
+
+  // for(int i=0;i<3;++i){
+  //   printf(": ");fflush(stdout);
+  //   getchar();__fpurge(stdin); // https://stackoverflow.com/a/2187514
+  //   sip002(NULL);
+  // }
+
+  sip002("🇪🇺🇬🇧");
+  sip002("🇨🇦🇺🇸");
+  sip002("🇯🇵");
+  sip002("🏴");
+
   curl_global_cleanup();
 
   return 0;
-
 }
- 
