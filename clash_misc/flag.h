@@ -34,7 +34,7 @@ typedef struct {
 
 wchar_t c2ris(const char);
 
-void ccs2str(char *const, ...);
+void ccs2str(char *__restrict const, ...);
 
 /*__attribute__((deprecated))*/ // void cc2wcs(FlagWCS *const, const CC *const);
 /*__attribute__((deprecated))*/ // void wcs2mbs(FlagMBS *const, const FlagWCS *const);

@@ -34,7 +34,7 @@ void bus_end(){
   ifi=0;
 }
 
-void f_flush(sd_bus_error *const ep,sd_bus_message **mp){
+void f_flush(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
   assert(0<=sd_bus_call_method(
     bus,
     SERVICE,OBJECT,INTERFACE,METHOD_FLUSHCACHE,
@@ -44,7 +44,7 @@ void f_flush(sd_bus_error *const ep,sd_bus_message **mp){
   ));
 }
 
-void f_setdns(sd_bus_error *const ep,sd_bus_message **mp){
+void f_setdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
   assert(0<=sd_bus_call_method(
     bus,
     SERVICE,OBJECT,INTERFACE,METHOD_SETDNS,
@@ -62,7 +62,7 @@ void f_setdns(sd_bus_error *const ep,sd_bus_message **mp){
   ));
 }
 
-void f_resetdns(sd_bus_error *const ep,sd_bus_message **mp){
+void f_resetdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
   assert(0<=sd_bus_call_method(
     bus,
     "org.freedesktop.resolve1",         // Service destination
@@ -80,7 +80,7 @@ void f_resetdns(sd_bus_error *const ep,sd_bus_message **mp){
   ));
 }
 
-void bus_call(void(*f)(sd_bus_error *const ep,sd_bus_message **mp)){
+void bus_call(void(*f)(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp)){
 
   sd_bus_error e=SD_BUS_ERROR_NULL;
   sd_bus_message *m=NULL;

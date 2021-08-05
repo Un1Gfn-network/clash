@@ -1,3 +1,3 @@
 #pragma once
 
-void kill_sync(const char *const name);
+void kill_sync(const char *__restrict const name);

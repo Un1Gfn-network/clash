@@ -8,6 +8,7 @@ echo
 cd "$(git rev-parse --show-toplevel)"
 git clean -dfX
 git status --ignored
+echo
 read -erp "  OK? "
 echo
 

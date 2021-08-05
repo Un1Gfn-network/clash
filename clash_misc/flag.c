@@ -27,7 +27,7 @@ wchar_t c2ris(const char c){
 }
 
 // Print one country code
-int cc2str(char *const s, const CC *const cc){
+static inline int cc2str(char *__restrict const s, const CC *__restrict const cc){
   assert(s);
   assert(cc);
   if(0==memcmp(cc->c,"CN",2)||0==memcmp(cc->c,"MO",2)){
@@ -47,7 +47,7 @@ int cc2str(char *const s, const CC *const cc){
 }
 
 // Print one or more country codes to a buffer
-void ccs2str(char *const dest, ...){
+void ccs2str(char *__restrict const dest, ...){
 
   bzero(dest,BUF_SZ);
 

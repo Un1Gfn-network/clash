@@ -390,7 +390,7 @@ void ioctl_route(const bool add,const bool net,const char *const dev,const char 
   free(ifa);
 }*/
 
-void ioctl_tun_create(const char *const dev){
+void ioctl_tun_create(const char *__restrict const dev){
   assert(dev&&strlen(dev));
   struct ifreq ifc={.ifr_flags=IFF_TUN|IFF_NO_PI};
   strncpy(ifc.ifr_name,dev,IFNAMSIZ);

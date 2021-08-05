@@ -36,6 +36,8 @@
 #define MAP_START() yaml_mapping_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_MAP_TAG,1,YAML_BLOCK_MAPPING_STYLE /*YAML_ANY_MAPPING_STYLE*/);EMIT()
 #define SEQ_START() yaml_sequence_start_event_initialize(&event,NULL,(yaml_char_t *)YAML_SEQ_TAG,1,YAML_BLOCK_SEQUENCE_STYLE /*YAML_ANY_SEQUENCE_STYLE*/);EMIT()
 
+#define G_SLIST_PREPEND(L,E) (L=g_slist_prepend(L,E))
+
 #ifdef FILENAME
 static FILE *file=NULL;
 #endif
@@ -47,10 +49,10 @@ static yaml_emitter_t emitter={};
 static yaml_event_t event={};
 
 static GSList *l_asia=NULL;
-static GSList *l_inv_hk_ru=NULL;
+static GSList *l_non_hk=NULL;
 static GSList *l_jp=NULL;
-static GSList *l_ca_us=NULL;
-static GSList *l_eu_gb=NULL;
+static GSList *l_na=NULL;
+static GSList *l_eugb=NULL;
 static GSList *l_xx=NULL;
 
 // name:     // var
@@ -85,37 +87,62 @@ typedef struct _Node {
   char server[SZ];
 } Node;
 
-static bool strstrVA(const char *const haystack, ...){
+static inline bool strstrArrVa(const char *__restrict const haystack, ...){
   va_list ap;
   va_start(ap,haystack);
-  const char *needle=NULL;
-  while((needle=(const char*)va_arg(ap,const char*)))
-    if(strstr(haystack,needle))
-      return true;
+  const char *const *needles=NULL; // Each parameter is an array of needles ending with NULL
+  while((needles=(const char *const *const)va_arg(ap,const char *const *const))){
+    // printf("\"%s\" ",haystack);fflush(stdout);
+    // printf("%s\n",needles[0]);
+    for(;*needles;++needles)
+      if(strstr(haystack,*needles))
+        return true;
+  }
   return false;
 }
 
-static void group(const char *const s){
+// static inline bool strstrVa(const char *__restrict const haystack, ...){
+//   va_list ap;
+//   va_start(ap,haystack);
+//   const char *needle=NULL;
+//   while((needle=(const char*)va_arg(ap,const char*)))
+//     if(strstr(haystack,needle))
+//       return true;
+//   return false;
+// }
 
-  #define G_SLIST_PREPEND(l,e) l=g_slist_prepend(l,e)
+static inline bool jp(const char *__restrict const s){
+  assert(s&&strlen(s));
+  return (strstr(s,"日本")||strcasestr(s,"ntt"));
+}
+
+static inline void group(const char *__restrict const s){
+
+  const char *const ca[]={"美國","美国","加拿大",NULL};
+  const char *const eu[]={"荷蘭","荷兰","德國","德国",NULL};
+  const char *const gb[]={"英國","英国",NULL};
+  const char *const hk[]={"ASYNCHRONOUS TRANSFERMODE","港","精簡","精简",NULL};
+  const char *const kr[]={"韓国","韩国",NULL};
+  const char *const ru[]={"俄羅斯","俄罗斯",NULL};
+  const char *const sg[]={"新加坡",NULL};
+  const char *const tw[]={"臺灣","台灣","台湾",NULL};
+  const char *const us[]={"美國","美国",NULL};
+
   bool xx=true;
 
-  //                                        hk   jp    kr                ru              sg      tw
-  if(strstrVA(s,"ASYNCHRONOUS TRANSFERMODE","港","日本","韓國","韓国","韩国","俄羅斯","俄罗斯","新加坡","臺灣","台灣","台湾",NULL))
-                                                                     { G_SLIST_PREPEND(l_asia      ,strdup(s)); xx=false; }
+  if(strstrArrVa(s,hk,kr,ru,sg,tw,NULL)||jp(s)) {G_SLIST_PREPEND(l_asia,  strdup(s));xx=false;}
+  if(jp(s))                                        {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
+  if(strstrArrVa(s,eu,gb,NULL))                    {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
+  if(strstrArrVa(s,ca,us,NULL))                    {G_SLIST_PREPEND(l_na,    strdup(s));xx=false;}
+  if(!strstrArrVa(s,hk,NULL))                      {G_SLIST_PREPEND(l_non_hk,strdup(s));}
 
-  if(!strstrVA(s,"ASYNCHRONOUS TRANSFERMODE","港","俄羅斯","俄罗斯",NULL))
-                                                                     { G_SLIST_PREPEND(l_inv_hk_ru ,strdup(s));              }
-  if(strstr(s,"日本")||strcasestr(s,"ntt"))/*補補補*/                  { G_SLIST_PREPEND(l_jp        ,strdup(s)); xx=false; }
-  if(strstrVA(s,"美國","美国","加拿大",NULL))/*補補補*/                  { G_SLIST_PREPEND(l_ca_us     ,strdup(s)); xx=false; }
-  if(strstrVA(s,"荷蘭","荷兰","德國","德国","英國","英国",NULL))/*補補補*/ { G_SLIST_PREPEND(l_eu_gb     ,strdup(s)); xx=false; }
-  if(xx)/**/                                                      { G_SLIST_PREPEND(l_xx     ,strdup(s));              }
+  if(xx)                                           {G_SLIST_PREPEND(l_xx,    strdup(s));}
 
   #undef G_SLIST_PREPEND
 
 }
 
-static void emit_scalar(const char *s,...){
+static inline void emit_scalar(const char *__restrict s,...){
   va_list vl;
   va_start(vl,s);
   while(s!=NULL){
@@ -124,7 +151,7 @@ static void emit_scalar(const char *s,...){
   }
 }
 
-static void emitter_begin(){
+static inline void emitter_begin(){
   // Init
   yaml_emitter_initialize(&emitter);
   yaml_emitter_set_output_file(&emitter,stdout);
@@ -165,7 +192,7 @@ static void emitter_begin(){
   MAP_END();
 }
 
-static void emitter_end(){
+static inline void emitter_end(){
   MAP_END();
   yaml_document_end_event_initialize(&event,1);
   EMIT();
@@ -203,13 +230,13 @@ static void emitter_end(){
   }
 }*/
 
-static void assert_token_type(yaml_token_type_t tt){
+static inline void assert_token_type(yaml_token_type_t tt){
   SCAN();
   assert(token.type==tt);
   DEL();
 }
 
-static void parser_begin(){
+static inline void parser_begin(){
 
   yaml_parser_initialize(&parser);
   yaml_parser_set_encoding(&parser,YAML_UTF8_ENCODING);
@@ -244,7 +271,7 @@ static void parser_begin(){
 
 }
 
-static void parser_end(){
+static inline void parser_end(){
 
   yaml_parser_delete(&parser);
   parser=(yaml_parser_t){};
@@ -256,7 +283,7 @@ static void parser_end(){
 
 }
 
-static void extract_value_with_key(const char *const k,char *v){
+static inline void extract_value_with_key(const char *__restrict const k,char *__restrict v){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
@@ -269,7 +296,7 @@ static void extract_value_with_key(const char *const k,char *v){
   DEL();
 }
 
-static void assert_value_with_key(const char *const k,const char *const v0){
+static inline void assert_value_with_key(const char *__restrict const k,const char *__restrict const v0){
   assert_token_type(YAML_KEY_TOKEN);
   SCAN();
   assert(token.type==YAML_SCALAR_TOKEN);
@@ -305,7 +332,7 @@ static void assert_value_with_key(const char *const k,const char *const v0){
 
 
 // lean: Expected n(YAML_BLOCK_END_TOKEN) - n(YAML_BLOCK_MAPPING_START_TOKEN)
-static void skip_node(int lean){
+static inline void skip_node(int lean){
   for(;;){
     SCAN();
     if(token.type==YAML_BLOCK_MAPPING_START_TOKEN)
@@ -322,7 +349,7 @@ static void skip_node(int lean){
   }
 }
 
-static void emit_node(Node *n){
+static inline void emit_node(const Node *__restrict const n){
   assert(!(n->obfs));
   MAP_START();
   emit_scalar(
@@ -342,7 +369,7 @@ static void emit_node(Node *n){
   SCALAR(data);
 }*/
 
-static void emit_and_destroy_group(const char *const title,GSList **const l){
+static void emit_and_destroy_group(const char *__restrict const title,GSList **__restrict const l){
 
   if(!(*l)){
     eprintf("skip empty group %s\n",title);
@@ -395,7 +422,7 @@ static void emit_and_destroy_group(const char *const title,GSList **const l){
   // fwide(3)
 }*/
 
-int main(const int argc, const char **argv){
+int main(const int argc, const char **__restrict argv){
 
   assert(argv);
 
@@ -539,24 +566,9 @@ int main(const int argc, const char **argv){
 
   // ccs2str(buf,
   //   &(CC){"UN"},
-  // NULL);emit_and_destroy_group(buf,&l_xx);
-  /***/;emit_and_destroy_group("XX",&l_xx);
-
-  /***/;emit_and_destroy_group("INV_HK_RU",&l_inv_hk_ru);
-
-  ccs2str(buf,
-    &(CC){"EU"},
-    &(CC){"GB"},
-  NULL);emit_and_destroy_group(buf,&l_eu_gb);
-
-  ccs2str(buf,
-    &(CC){"JP"},
-  NULL);emit_and_destroy_group(buf,&l_jp);
-
-  ccs2str(buf,
-    &(CC){"CA"},
-    &(CC){"US"},
-  NULL);emit_and_destroy_group(buf,&l_ca_us);
+  // NULL);
+  // emit_and_destroy_group(buf,&l_xx);
+  emit_and_destroy_group("XX",&l_xx);
 
   ccs2str(buf,
     &(CC){"HK"},
@@ -565,7 +577,27 @@ int main(const int argc, const char **argv){
     &(CC){"RU"},
     &(CC){"SG"},
     &(CC){"TW"},
-  NULL);emit_and_destroy_group(buf,&l_asia);
+  NULL);
+  emit_and_destroy_group(buf,&l_asia);
+
+  ccs2str(buf,
+    &(CC){"JP"},
+  NULL);
+  emit_and_destroy_group(buf,&l_jp);
+
+  ccs2str(buf,
+    &(CC){"EU"},
+    &(CC){"GB"},
+  NULL);
+  emit_and_destroy_group(buf,&l_eugb);
+
+  ccs2str(buf,
+    &(CC){"CA"},
+    &(CC){"US"},
+  NULL);
+  emit_and_destroy_group(buf,&l_na);
+
+  emit_and_destroy_group("NON_HK",&l_non_hk);
 
   SEQ_END();
 

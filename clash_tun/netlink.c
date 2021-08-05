@@ -48,12 +48,12 @@ void netlink_end(){
   netlinkfd=-1;
 }
 
-static void clearbuf(){
+static inline void clearbuf(){
   bzero(recvbuf,SZ);
   len=0;
 }
 
-static void receive(){
+static inline void receive(){
   privilege_escalate();
   for(char *p=recvbuf;;){
     const int seglen=recv(netlinkfd,p,sizeof(recvbuf)-len,0);
@@ -67,7 +67,7 @@ static void receive(){
   privilege_drop();
 }
 
-static void ack(){
+static inline void ack(){
   assert(((struct nlmsghdr*)recvbuf)->nlmsg_type==NLMSG_ERROR);
   // assert(((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error==0);
   const int e=((struct nlmsgerr*)NLMSG_DATA((struct nlmsghdr*)recvbuf))->error;
@@ -77,7 +77,8 @@ static void ack(){
   }
 }
 
-static void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,const void *const data){
+// Stuff things into nlmsghdr
+static inline void attr(struct nlmsghdr *__restrict const n,const size_t maxlen,const int type,const void *__restrict const data){
 
   #define NEWLEN(x) (NLMSG_ALIGN(n->nlmsg_len)+RTA_ALIGN(RTA_LENGTH(x)))
   #define FILL(x) {assert(NEWLEN(x)<=maxlen);rta->rta_type=type;rta->rta_len=RTA_LENGTH(x);}
@@ -131,7 +132,7 @@ static void attr(struct nlmsghdr *const n,const size_t maxlen,const int type,con
 
 }
 
-void netlink_route(const bool add,const bool gw,const char *const dev,const char *const dst,const char *const via){
+void netlink_route(const bool add,const bool gw,const char *__restrict const dev,const char *__restrict const dst,const char *__restrict const via){
 
   assert(dev&&strlen(dev));
   const int oif=if_nametoindex(dev);
@@ -183,7 +184,7 @@ void netlink_route(const bool add,const bool gw,const char *const dev,const char
 
 }
 
-static void ask_route(){
+static inline void ask_route(){
   // RTM_GETROUTE only
   typedef struct {
     struct nlmsghdr nh;
@@ -319,7 +320,7 @@ static void ask_route(){
 
 }*/
 
-void netlink_get_gateway(char *const s){
+void netlink_get_gateway(char *__restrict const s){
 
   ask_route();
   receive();
@@ -634,7 +635,7 @@ typedef struct {
   char attrbuf[SZ];
 } Req_chlink;
 
-void netlink_del_link(const char *const dev){
+void netlink_del_link(const char *__restrict const dev){
   assert(dev);
   Req_chlink req={
     .nh={
@@ -779,7 +780,7 @@ void netlink_del_link(const char *const dev){
 
 }*/
 
-void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigned char prefixlen){
+void netlink_tun_addr(const char *__restrict const dev,const char *__restrict const ipv4,const unsigned char prefixlen){
   assert(prefixlen<=32);
   assert(ipv4&&strlen(ipv4));
   assert(dev&&strlen(dev));
@@ -818,7 +819,7 @@ void netlink_tun_addr(const char *const dev,const char *const ipv4,const unsigne
   clearbuf();
 }
 
-void netlink_flags(const bool up,const char *const dev){
+void netlink_flags(const bool up,const char *__restrict const dev){
 
   assert(dev&&strlen(dev));
   const unsigned index=if_nametoindex(dev);

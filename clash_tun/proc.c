@@ -26,7 +26,7 @@
     free(tab);
 }*/
 
-static inline proc_t *inspect_proc(proc_t *proc,const char *const name){
+static inline proc_t *inspect_proc(proc_t *__restrict proc,const char *__restrict const name){
   // printf(" %d %d %d %d | %s | %s\n",
   //   proc->tid,
   //   proc->pgrp,
@@ -64,7 +64,7 @@ static inline proc_t *inspect_proc(proc_t *proc,const char *const name){
   return proc;
 }
 
-void kill_sync(const char *const name){
+void kill_sync(const char *__restrict const name){
   // PROCTAB *PT=openproc(PROC_FLAGS);
   // assert(PT);
   // proc_t *proc=NULL;

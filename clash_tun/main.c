@@ -97,7 +97,7 @@ static inline void read_r(){
   assert(s==fgets(s,SZ,stdin));
 }
 
-static inline void try_unlink(const char *const f){
+static inline void try_unlink(const char *__restrict const f){
    const int i=unlink(f);
    if(i==-1){
      assert(errno=ENOENT);
@@ -114,7 +114,7 @@ static inline void try_unlink(const char *const f){
   netlink_end();
 }*/
 
-int main(const int argc,const char **argv){
+int main(const int argc,const char **__restrict argv){
 
   // Required by now() and resolv()
   assert(0==curl_global_init(CURL_GLOBAL_NOTHING));

@@ -121,7 +121,7 @@ void profile_clear(){
   }
 }*/
 
-static inline void match(const char *const string,const char *const regex){
+static inline void match(const char *__restrict const string,const char *__restrict const regex){
   // printf("%s\n",regex);
   regex_t preg={};
   assert(0==regcomp(&preg,regex,REG_EXTENDED));
@@ -135,7 +135,7 @@ static inline void match(const char *const string,const char *const regex){
   regfree(&preg);
 }
 
-static inline void appendjson(json_object *const root,const char *const k,const char *const v){
+static inline void appendjson(json_object *__restrict const root, const char *__restrict const k, const char *__restrict const v){
   match(k,"[0-9A-Za-z_]+");
   match(v,"[0-9A-Za-z_.-]+");
   // const int ql=strlen(v)+2+1;
@@ -159,7 +159,7 @@ static inline void appendjson(json_object *const root,const char *const k,const 
 //   "fast_open": "true"
 //   "mode": "tcp_and_udp"
 // }
-void profile_to_json(const char *const server_title){
+void profile_to_json(const char *__restrict const server_title){
   assert(profile_loaded());
   json_object *root=json_object_new_object();
   assert(root);

@@ -7,11 +7,11 @@
 #define YAML_PATH "/tmp/clash/config.yaml"
 
 // yaml2profile.c
-void yaml2profile(const bool,profile_t *const,const char *const,const char *const);
+void yaml2profile(const bool,profile_t *__restrict const,const char *__restrict const,const char *__restrict const);
 void profile_inspect();
 
 // resolv.c
-char *resolv(const char *domain);
+char *resolv(const char *__restrict domain);
 
 // restful.c
 char *now();

@@ -129,7 +129,7 @@ case "$(basename "$0")" in
     read -erp "clash_run will convert yaml as follows ... "
     echo
     clash_convert <raw.yaml | less -SRM +%
-    echo
+    # echo
     read -erp 'ok? '
     echo
 

@@ -13,7 +13,7 @@
 static yaml_parser_t parser={};
 static yaml_token_t token={};
 
-static inline char *k_v_dup(const char *const k){
+static inline char *k_v_dup(const char *__restrict const k){
   SCAN();TYPE(YAML_KEY_TOKEN);DEL();
   SCAN();assert(0==strcmp(k,VAL));DEL();
   SCAN();TYPE(YAML_VALUE_TOKEN);DEL();
@@ -21,7 +21,7 @@ static inline char *k_v_dup(const char *const k){
   return ret;
 }
 
-static inline int k_v_cmp(const char *const k,const char *const v){
+static inline int k_v_cmp(const char *__restrict const k,const char *__restrict const v){
   SCAN();TYPE(YAML_KEY_TOKEN);DEL();
   SCAN();assert(0==strcmp(k,VAL));DEL();
   SCAN();TYPE(YAML_VALUE_TOKEN);DEL();
@@ -29,7 +29,7 @@ static inline int k_v_cmp(const char *const k,const char *const v){
   return ret;
 }
 
-void yaml2profile(const bool resolve_domain,profile_t *const profile,const char *const from_yaml,const char *const server_title){
+void yaml2profile(const bool resolve_domain, profile_t *__restrict const profile, const char *__restrict const from_yaml, const char *__restrict const server_title){
 
   // Init
   yaml_parser_initialize(&parser);
@@ -112,7 +112,7 @@ void yaml2profile(const bool resolve_domain,profile_t *const profile,const char 
 
 }
 
-void profile_inspect(const profile_t *const profile){
+void profile_inspect(const profile_t *__restrict const profile){
   printf("\n");
   printf("remote_host = %s\n",profile->remote_host);
   printf("local_addr  = %s\n",profile->local_addr);

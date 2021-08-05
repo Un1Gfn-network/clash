@@ -15,7 +15,7 @@
 
 static pthread_t thread=0;
 
-static void callback(int socks_fd, int udp_fd,void *data){
+static void callback(int socks_fd, int udp_fd,void *__restrict data){
   assert(!data);
   assert(
     socks_fd>=3 &&
@@ -27,7 +27,7 @@ static void callback(int socks_fd, int udp_fd,void *data){
   status_change_to(UP);
 }
 
-static void *start_routine(void *arg){
+static void *start_routine(void *__restrict arg){
   assert(!arg);
   printf("starting ss\n");
 

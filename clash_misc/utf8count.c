@@ -19,7 +19,7 @@ typedef enum {
   MULTI_TRAILING // 10xxxxxx
 } Class;
 
-static inline Class classify(const unsigned char b, int *const n_R){
+static inline Class classify(const unsigned char b, int *__restrict const n_R){
   if((b>>(8-1))==0b0/*xxxxxxx*/){*n_R=0      ;return SINGLE;}
   if((b>>(8-2))==0b10/*xxxxxx*/){assert(!n_R);return MULTI_TRAILING;}
   if((b>>(8-3))==0b110/*xxxxx*/){*n_R=1      ;return MULTI_HEADER;}
@@ -38,7 +38,7 @@ static inline Class classify(const unsigned char b, int *const n_R){
   return false;
 }*/
 
-static inline long dumpfile(char **const bufp, const char *const filename){
+static inline long dumpfile(char **__restrict const bufp, const char *__restrict const filename){
 
   FILE *file=fopen(filename,"r");
   assert(file);

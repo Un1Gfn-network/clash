@@ -19,7 +19,8 @@
 static char *buf=NULL;
 static size_t sz=0;
 
-static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata){
+static size_t write_callback(char *__restrict ptr, size_t size, size_t nmemb, void *__restrict userdata){
+  assert(!userdata);
   assert(size==1);
   assert(nmemb>=1);
   // eprintf("new segment\n");
@@ -29,7 +30,7 @@ static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdat
   return nmemb;
 }
 
-static inline const char *buf_get(const char *const url){
+static inline const char *buf_get(const char *__restrict const url){
 
   CURL *curl=curl_easy_init();
   assert(curl);
@@ -71,7 +72,7 @@ static inline void buf_drop(){
 }
 
 #define field_string_assert(J,K,V) assert(0==strcmp(V,field_string_get(J,K)))
-static inline const char *field_string_get(const json_object *const j,const char *const k){
+static inline const char *field_string_get(const json_object *__restrict const j,const char *__restrict const k){
   assert(j&&k&&strlen(k));
   json_object *p=json_object_object_get(j,k);assert(p);
   assert(json_type_string==json_object_get_type(p));
@@ -93,7 +94,7 @@ static inline const char *field_string_get(const json_object *const j,const char
 //   return json_object_get_int(p);
 // }
 
-static inline json_object *json_get(const char *const s){
+static inline json_object *json_get(const char *__restrict const s){
   if(s){
     CURL *c=curl_easy_init();assert(c);
     char *ss=curl_easy_escape(c,s,0);
