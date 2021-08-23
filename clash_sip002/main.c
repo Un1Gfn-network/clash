@@ -11,6 +11,8 @@
 #include <unistd.h> // fork()
 
 #define SZ 1024
+#define GN "\e[32m"
+#define RST "\e[0m"
 
 // libqrencode+Unicode
 
@@ -203,6 +205,27 @@ static inline void sip002(const char *tagRaw){
 
 }
 
+static inline void lan(){
+  printf(" %s :","LAN");
+  getchar();__fpurge(stdin); // https://stackoverflow.com/a/2187514
+  puts(
+"\n\
+Type             Socks5\n\
+\n\
+Host\n\
+192.168.0.223\n\
+\n\
+Port\n\
+1080\n\
+\n\
+Authentication    None\n\
+\n\
+Remark\n\
+LAN\n\
+"
+  );
+}
+
 int main(){
 
   curl_global_init(CURL_GLOBAL_NOTHING); // For yaml2profile() and curl_easy_escape()
@@ -213,10 +236,13 @@ int main(){
   //   sip002(NULL);
   // }
 
+  puts("\n"GN"don't forget to scan w/ both iPhone and iPad"RST"\n");
+  lan();
+  sip002("🇯🇵");
   sip002("🇪🇺🇬🇧");
   sip002("🇨🇦🇺🇸");
-  sip002("🇯🇵");
-  sip002("🏴");
+  sip002("🇰🇷");
+  sip002("NON_HK");
 
   curl_global_cleanup();
 

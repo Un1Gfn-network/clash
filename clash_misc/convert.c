@@ -49,10 +49,11 @@ static yaml_emitter_t emitter={};
 static yaml_event_t event={};
 
 static GSList *l_asia=NULL;
-static GSList *l_non_hk=NULL;
 static GSList *l_jp=NULL;
-static GSList *l_na=NULL;
 static GSList *l_eugb=NULL;
+static GSList *l_na=NULL;
+static GSList *l_kr=NULL;
+static GSList *l_non_hk=NULL;
 static GSList *l_xx=NULL;
 
 // name:     // var
@@ -131,12 +132,12 @@ static inline void group(const char *__restrict const s){
   bool xx=true;
 
   if(strstrArrVa(s,hk,kr,ru,sg,tw,NULL)||jp(s)) {G_SLIST_PREPEND(l_asia,  strdup(s));xx=false;}
-  if(jp(s))                                        {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
-  if(strstrArrVa(s,eu,gb,NULL))                    {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
-  if(strstrArrVa(s,ca,us,NULL))                    {G_SLIST_PREPEND(l_na,    strdup(s));xx=false;}
-  if(!strstrArrVa(s,hk,NULL))                      {G_SLIST_PREPEND(l_non_hk,strdup(s));}
-
-  if(xx)                                           {G_SLIST_PREPEND(l_xx,    strdup(s));}
+  if(jp(s))                                     {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
+  if(strstrArrVa(s,eu,gb,NULL))                 {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
+  if(strstrArrVa(s,ca,us,NULL))                 {G_SLIST_PREPEND(l_na,    strdup(s));xx=false;}
+  if(strstrArrVa(s,kr,NULL))                    {G_SLIST_PREPEND(l_kr,    strdup(s));xx=false;}
+  if(!strstrArrVa(s,hk,NULL))                   {G_SLIST_PREPEND(l_non_hk,strdup(s));}
+  if(xx)                                        {G_SLIST_PREPEND(l_xx,    strdup(s));}
 
   #undef G_SLIST_PREPEND
 
@@ -175,7 +176,7 @@ static inline void emitter_begin(){
     "mode", "global",
     "log-level", "info",
     "ipv6", "false",
-    "external-controller", "127.0.0.1:"xstr(RESTFUL_PORT), // yacd updated defaults
+    "external-controller", "0.0.0.0:"xstr(RESTFUL_PORT), // yacd updated defaults
     // https://github.com/haishanh/yacd/issues/612
     // Access at "http://127.0.0.1:RESTFUL_PORT/ui/index.html"
     // Groups are at the bottom of GLOBAL
@@ -185,7 +186,7 @@ static inline void emitter_begin(){
     NULL
   );
   SCALAR("profile");MAP_START();
-    SCALAR("store-selected");SCALAR("false");
+    SCALAR("store-selected");SCALAR("true");
   MAP_END();
   SCALAR("dns");MAP_START();
     SCALAR("enable");SCALAR("false");
@@ -596,6 +597,11 @@ int main(const int argc, const char **__restrict argv){
     &(CC){"US"},
   NULL);
   emit_and_destroy_group(buf,&l_na);
+
+  ccs2str(buf,
+    &(CC){"KR"},
+  NULL);
+  emit_and_destroy_group(buf,&l_kr);
 
   emit_and_destroy_group("NON_HK",&l_non_hk);
 

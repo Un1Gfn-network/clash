@@ -20,7 +20,9 @@ static char *buf=NULL;
 static size_t sz=0;
 
 static size_t write_callback(char *__restrict ptr, size_t size, size_t nmemb, void *__restrict userdata){
-  assert(!userdata);
+  // https://curl.se/libcurl/c/CURLOPT_WRITEDATA.html#DEFAULT
+  // By default, this is a FILE * to stdout.
+  assert(stdout==userdata);
   assert(size==1);
   assert(nmemb>=1);
   // eprintf("new segment\n");

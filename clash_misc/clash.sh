@@ -125,6 +125,8 @@ case "$(basename "$0")" in
     read -erp "  Please download ${!uri} to /tmp/raw.yaml "
     echo
 
+    diff -u --color=always {"$DOTDIR/$1",/tmp}/raw.yaml || echo
+
     cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
     read -erp "clash_run will convert yaml as follows ... "
     echo
