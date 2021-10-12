@@ -119,20 +119,30 @@ case "$(basename "$0")" in
   # "rixcloud"|"ssrcloud")
   "ssrcloud")
 
+    echo
+
     uri="$1_uri"
 
+    # echo
+    # read -erp "  Please download ${!uri} to /tmp/raw.yaml "
+    # echo
+
     echo
-    read -erp "  Please download ${!uri} to /tmp/raw.yaml "
+    printf    "  download [1] to \e[4m%s\e[0m\n" "/tmp/raw.yaml"
+    echo
+    echo      "  [1]: ${!uri}"
+    echo
+    read -rp  "  done? "
     echo
 
     diff -u --color=always {"$DOTDIR/$1",/tmp}/raw.yaml || echo
 
     cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    read -erp "clash_run will convert yaml as follows ... "
+    read -rp "clash_run will convert yaml as follows ... "
     echo
     clash_convert <raw.yaml | less -SRM +%
-    # echo
-    read -erp 'ok? '
+    echo
+    read -rp 'ok? '
     echo
 
     cd "$DOTDIR/$1" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }

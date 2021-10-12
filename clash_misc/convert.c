@@ -51,7 +51,7 @@ static yaml_event_t event={};
 static GSList *l_asia=NULL;
 static GSList *l_jp=NULL;
 static GSList *l_eugb=NULL;
-static GSList *l_na=NULL;
+static GSList *l_naoc=NULL;
 static GSList *l_kr=NULL;
 static GSList *l_non_hk=NULL;
 static GSList *l_xx=NULL;
@@ -119,10 +119,12 @@ static inline bool jp(const char *__restrict const s){
 
 static inline void group(const char *__restrict const s){
 
-  const char *const ca[]={"美國","美国","加拿大",NULL};
-  const char *const eu[]={"荷蘭","荷兰","德國","德国",NULL};
+  const char *const au[]={"澳",NULL};
+  const char *const ca[]={"加拿大",NULL};
+  const char *const eu[]={"荷蘭","荷兰","德國","德国","法國","法国","愛","爱",NULL};
   const char *const gb[]={"英國","英国",NULL};
   const char *const hk[]={"ASYNCHRONOUS TRANSFERMODE","港","精簡","精简",NULL};
+  // const char *const in[]={"印度",NULL};
   const char *const kr[]={"韓国","韩国",NULL};
   const char *const ru[]={"俄羅斯","俄罗斯",NULL};
   const char *const sg[]={"新加坡",NULL};
@@ -134,7 +136,7 @@ static inline void group(const char *__restrict const s){
   if(strstrArrVa(s,hk,kr,ru,sg,tw,NULL)||jp(s)) {G_SLIST_PREPEND(l_asia,  strdup(s));xx=false;}
   if(jp(s))                                     {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
   if(strstrArrVa(s,eu,gb,NULL))                 {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
-  if(strstrArrVa(s,ca,us,NULL))                 {G_SLIST_PREPEND(l_na,    strdup(s));xx=false;}
+  if(strstrArrVa(s,au,ca,us,NULL))              {G_SLIST_PREPEND(l_naoc,  strdup(s));xx=false;}
   if(strstrArrVa(s,kr,NULL))                    {G_SLIST_PREPEND(l_kr,    strdup(s));xx=false;}
   if(!strstrArrVa(s,hk,NULL))                   {G_SLIST_PREPEND(l_non_hk,strdup(s));}
   if(xx)                                        {G_SLIST_PREPEND(l_xx,    strdup(s));}
@@ -593,10 +595,11 @@ int main(const int argc, const char **__restrict argv){
   emit_and_destroy_group(buf,&l_eugb);
 
   ccs2str(buf,
+    &(CC){"AU"},
     &(CC){"CA"},
     &(CC){"US"},
   NULL);
-  emit_and_destroy_group(buf,&l_na);
+  emit_and_destroy_group(buf,&l_naoc);
 
   ccs2str(buf,
     &(CC){"KR"},
