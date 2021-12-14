@@ -48,12 +48,14 @@ static yaml_token_t token={};
 static yaml_emitter_t emitter={};
 static yaml_event_t event={};
 
+/* AlphaOrd */
 static GSList *l_asia=NULL;
-static GSList *l_jp=NULL;
+static GSList *l_aucaus=NULL;
 static GSList *l_eugb=NULL;
-static GSList *l_naoc=NULL;
-static GSList *l_kr=NULL;
+static GSList *l_hk=NULL;
+static GSList *l_jp=NULL;
 static GSList *l_non_hk=NULL;
+static GSList *l_tw=NULL;
 static GSList *l_xx=NULL;
 
 // name:     // var
@@ -133,13 +135,17 @@ static inline void group(const char *__restrict const s){
 
   bool xx=true;
 
-  if(strstrArrVa(s,hk,kr,ru,sg,tw,NULL)||jp(s)) {G_SLIST_PREPEND(l_asia,  strdup(s));xx=false;}
-  if(jp(s))                                     {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
-  if(strstrArrVa(s,eu,gb,NULL))                 {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
-  if(strstrArrVa(s,au,ca,us,NULL))              {G_SLIST_PREPEND(l_naoc,  strdup(s));xx=false;}
-  if(strstrArrVa(s,kr,NULL))                    {G_SLIST_PREPEND(l_kr,    strdup(s));xx=false;}
-  if(!strstrArrVa(s,hk,NULL))                   {G_SLIST_PREPEND(l_non_hk,strdup(s));}
-  if(xx)                                        {G_SLIST_PREPEND(l_xx,    strdup(s));}
+                                                               /* AlphaOrd */
+  if( strstrArrVa(s,hk,kr,ru,sg,tw,NULL)||jp(s)) {G_SLIST_PREPEND(l_asia,  strdup(s));xx=false;}
+  if( strstrArrVa(s,au,ca,us,NULL))              {G_SLIST_PREPEND(l_aucaus,strdup(s));xx=false;}
+  if( strstrArrVa(s,eu,gb,NULL))                 {G_SLIST_PREPEND(l_eugb,  strdup(s));xx=false;}
+  if( strstrArrVa(s,hk,NULL))                    {G_SLIST_PREPEND(l_hk,    strdup(s));xx=false;}
+  if( jp(s))                                     {G_SLIST_PREPEND(l_jp,    strdup(s));xx=false;}
+  if(!strstrArrVa(s,hk,NULL))                    {G_SLIST_PREPEND(l_non_hk,strdup(s));         }
+  if( strstrArrVa(s,tw,NULL))                    {G_SLIST_PREPEND(l_tw,    strdup(s));xx=false;}
+
+  if(xx)
+    {G_SLIST_PREPEND(l_xx,strdup(s));}
 
   #undef G_SLIST_PREPEND
 
@@ -567,46 +573,33 @@ int main(const int argc, const char **__restrict argv){
   char buf[BUF_SZ];
   bzero(buf,BUF_SZ);
 
-  // ccs2str(buf,
-  //   &(CC){"UN"},
-  // NULL);
-  // emit_and_destroy_group(buf,&l_xx);
+  /* RARE */
+
   emit_and_destroy_group("XX",&l_xx);
 
-  ccs2str(buf,
-    &(CC){"HK"},
-    &(CC){"JP"},
-    &(CC){"KR"},
-    &(CC){"RU"},
-    &(CC){"SG"},
-    &(CC){"TW"},
-  NULL);
+  ccs2str(buf,&(CC){"HK"},&(CC){"JP"},&(CC){"KR"},&(CC){"RU"},&(CC){"SG"},&(CC){"TW"},NULL);
   emit_and_destroy_group(buf,&l_asia);
 
-  ccs2str(buf,
-    &(CC){"JP"},
-  NULL);
-  emit_and_destroy_group(buf,&l_jp);
-
-  ccs2str(buf,
-    &(CC){"EU"},
-    &(CC){"GB"},
-  NULL);
-  emit_and_destroy_group(buf,&l_eugb);
-
-  ccs2str(buf,
-    &(CC){"AU"},
-    &(CC){"CA"},
-    &(CC){"US"},
-  NULL);
-  emit_and_destroy_group(buf,&l_naoc);
-
-  ccs2str(buf,
-    &(CC){"KR"},
-  NULL);
-  emit_and_destroy_group(buf,&l_kr);
+  /* UNK */
 
   emit_and_destroy_group("NON_HK",&l_non_hk);
+
+  ccs2str(buf,&(CC){"HK"},NULL);
+  emit_and_destroy_group(buf,&l_hk);
+
+  /* FREQUENT */
+
+  ccs2str(buf,&(CC){"JP"},NULL);
+  emit_and_destroy_group(buf,&l_jp);
+
+  ccs2str(buf,&(CC){"EU"},&(CC){"GB"},NULL);
+  emit_and_destroy_group(buf,&l_eugb);
+
+  ccs2str(buf,&(CC){"AU"},&(CC){"CA"},&(CC){"US"},NULL);
+  emit_and_destroy_group(buf,&l_aucaus);
+
+  ccs2str(buf,&(CC){"TW"},NULL);
+  emit_and_destroy_group(buf,&l_tw);
 
   SEQ_END();
 

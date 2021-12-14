@@ -1,5 +1,5 @@
 // ./framebuffer.sh
-// https://github.com/Un1Gfn/beaglebone/blob/master/Documentation/Framebuffer.rst
+// https://github.com/Un1Gfn/sphinx.public/kms.rst
 
 #include <assert.h>
 #include <curses.h>
@@ -44,12 +44,13 @@ static void *scr0=NULL;
 
 static struct fb_var_screeninfo fvs={};
 
-static inline void fix(){
+static inline void f_f_s(){
 
   struct fb_fix_screeninfo FI={};
   assert(0==ioctl(fbfd,FBIOGET_FSCREENINFO,&FI));
 
-  assert(0==strcmp("i915""drm""fb",FI.id));
+  assert(0==strcmp("i915",FI.id));
+  // assert(0==strcmp("i915""drm""fb",FI.id));
 
   assert(0==FI.smem_start);
 
@@ -83,7 +84,7 @@ static inline void fix(){
 
 }
 
-static inline void fvs_init(){
+static inline void f_v_s(){
 
   assert(0==ioctl(fbfd,FBIOGET_VSCREENINFO,&fvs));
 
@@ -273,8 +274,8 @@ int main(){
   fbfd=open("/dev/fb0",O_RDWR);
   assert(fbfd>=3);
 
-  fix();
-  fvs_init();
+  f_f_s();
+  f_v_s();
 
   scr0=mmap(NULL,
            smem_len,
