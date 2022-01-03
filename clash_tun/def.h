@@ -20,7 +20,7 @@
 #define USR "darren"
 
 #define SS_LOG "/tmp/ss-local.log"
-#define TUN_LOG "/tmp/badvpn-tun2socks.log"
+#define TUN_LOG "/tmp/tun2socks.log"
 
 #define DNS {"8.8.8.8","8.8.4.4",NULL}
 

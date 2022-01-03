@@ -10,9 +10,13 @@
 #include "./bus.h"
 #include "./privilege.h"
 
+// service destination
 #define SERVICE "org.freedesktop.resolve1"
+// path to object
 #define OBJECT "/org/freedesktop/resolve1"
+// interface
 #define INTERFACE "org.freedesktop.resolve1.Manager"
+// method
 #define METHOD_FLUSHCACHE "FlushCaches"
 #define METHOD_SETDNS "SetLinkDNS"
 
@@ -65,18 +69,18 @@ void f_setdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
 void f_resetdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
   assert(0<=sd_bus_call_method(
     bus,
-    "org.freedesktop.resolve1",         // Service destination
-    "/org/freedesktop/resolve1",        // Path to object
-    "org.freedesktop.resolve1.Manager", // Interface
-    "SetLinkDNS",                       // Method
+    SERVICE,OBJECT,INTERFACE,METHOD_SETDNS,
     ep,
     mp,
     "ia(iay)",
     (int32_t)ifi,
-    1,
+    2,
       AF_INET,
       4,
-        192,168,1,1
+        223,5,5,5,
+      AF_INET,
+      4,
+        223,6,6,6
   ));
 }
 

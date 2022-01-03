@@ -369,16 +369,17 @@ void netlink_get_gateway(char *__restrict const s){
           assert(s==inet_ntop(AF_INET,RTA_DATA(rta),s,INET_ADDRSTRLEN));
           // assert(0==strcmp(s,"192.168.1.1"));
           break;
-        case RTA_OIF:
-          assert(3==*((int*)RTA_DATA(rta)));
+        case RTA_OIF: // rtnetlink(7) output interface index
+          assert(2==*((int*)RTA_DATA(rta)));
           break;
         case RTA_PREFSRC:
           break;
         case RTA_PRIORITY:
-          // printf("metric %d\n",*((int*)RTA_DATA(rta)));
-          assert(
-            *((int*)RTA_DATA(rta))==303||
-            *((int*)RTA_DATA(rta))==3003
+          printf("metric %d\n",*((int*)RTA_DATA(rta)));
+          assert(0
+            ||*((int*)RTA_DATA(rta))==303
+            ||*((int*)RTA_DATA(rta))==3003
+            ||*((int*)RTA_DATA(rta))==3002
           );
           break;
         case RTA_TABLE:

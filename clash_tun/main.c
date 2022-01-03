@@ -21,23 +21,28 @@
 
 static char gw[INET_ADDRSTRLEN]={};
 
-static inline pid_t start_badvpn(){
-  const pid_t f=fork();
-  if(f>=1){
-    // Parent branch
-    // f is child pid
+static inline pid_t start_tun2socks(){
+  const pid_t pid=fork();
+  if(pid>=1){
+    /**********************************
+     * this branch runs in the parent *
+     * this pid belongs to the child  *
+     **********************************/
     assert(1000==geteuid());
-    printf("starting badvpn-tun2socks %d\n",f);
-    return f;
+    printf("starting tun2socks with pid %d\n",pid);
+    return pid;
   }else{
-    // Child branch
+    /*********************************
+     * this branch runs in the child *
+     * this pid is dummy             *
+     *********************************/
     // https://stackoverflow.com/a/1777294/
     assert(1000==geteuid());
-    assert(f==0);
+    assert(pid==0);
     printf("badvpn-tun2socks running, log \'%s\'\n",TUN_LOG);
+    // FILE *freopen(const char *restrict pathname, const char *restrict mode,FILE *restrict stream);
     // int fd=create(TUN_LOG,0644);
-    int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC,0644);
-    // int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC|O_DIRECT|O_SYNC,0644);
+    int pfd=open(TUN_LOG,O_CREAT|O_WRONLY|O_TRUNC/*|O_DIRECT|O_SYNC*/,0644);
     assert(pfd>=3);
     assert(0==close(STDOUT_FILENO));
     assert(STDOUT_FILENO==dup2(pfd,STDOUT_FILENO));
@@ -46,17 +51,15 @@ static inline pid_t start_badvpn(){
     // execve(2)
     privilege_escalate();
     assert(-1!=execl(
-      "/usr/bin/badvpn-tun2socks",
-      "badvpn-tun2socks",
-      "--tundev"           ,TUN             ,
-      "--netif-ipaddr"     ,"10.0.0.2"      ,
-      "--netif-netmask"    ,"255.255.255.0" ,
-      "--socks-server-addr","127.0.0.1:1080",
-      "--socks5-udp",
+      "/usr/bin/tun2socks", // executable
+      "tun2socks", // "$0"
+      "-device"  ,"tun://"TUN,
+      "-loglevel","info",
+      "-proxy"   ,"socks5://127.0.0.1:1080",
       (char*)NULL
     ));
-    assert(0);
     // Should never reach here
+    assert(0);
     // privilege_drop();
     // exit(0);
   }
@@ -69,7 +72,7 @@ static inline void set(){
   netlink_up(TUN);
 
   netlink_get_gateway(gw);
-  printf("replacing gateway %s\n",gw);
+  printf("replacing gateway %s with %s\n",gw,"10.0.0.2");
   netlink_del_gateway(WLO,gw);
   netlink_add_gateway(TUN,"10.0.0.2");
 
@@ -97,7 +100,7 @@ static inline void read_r(){
   assert(s==fgets(s,SZ,stdin));
 }
 
-static inline void try_unlink(const char *__restrict const f){
+static inline void unlink_nofail(const char *__restrict const f){
    const int i=unlink(f);
    if(i==-1){
      assert(errno=ENOENT);
@@ -115,6 +118,8 @@ static inline void try_unlink(const char *__restrict const f){
 }*/
 
 int main(const int argc,const char **__restrict argv){
+
+  printf("\e]0;%s\a","clash_tun");fflush(stdout);
 
   // Required by now() and resolv()
   assert(0==curl_global_init(CURL_GLOBAL_NOTHING));
@@ -137,7 +142,7 @@ int main(const int argc,const char **__restrict argv){
   yaml2profile(true,&profile,YAML_PATH,name);
   assert(profile_loaded());
   // profile_inspect(&profile);
-  try_unlink(SS_LOCAL_JSON);
+  unlink_nofail(SS_LOCAL_JSON);
   profile_to_json(name);
   free(name);name=NULL;
 
@@ -149,14 +154,16 @@ int main(const int argc,const char **__restrict argv){
   // (2/3) Shadowsocks
   kill_sync("clash");
   assert(profile_loaded());
-  try_unlink(SS_LOG);
+  unlink_nofail(SS_LOG);
   assert(start_ss());
 
   // (3/3) TUN & route
   netlink_init();
   set();
-  try_unlink(TUN_LOG);
-  pid_t f=start_badvpn();
+  unlink_nofail(TUN_LOG);
+  printf("\e]0;%s\a","clash_tun - tun2socks");fflush(stdout);
+  // puts("please invoke tun2socks manually");
+  pid_t pid=start_tun2socks();
 
   // Impossible to know when badvpn-tun2socks becomes ready for SIGINT without inspecting its code
   // status_*() doesn't work between processes
@@ -164,9 +171,11 @@ int main(const int argc,const char **__restrict argv){
   read_r();
 
   // (3/3) TUN & route
-  printf("killing badvpn-tun2socks %d\n",f);
-  ESCALATED(assert(0==kill(f,SIGINT)));
-  f=-1;
+  // printf("please make sure tun2socks is killed, then press <ENTER> ");fflush(stdout);
+  // getchar();
+  printf("killing tun2socks %d\n",pid);
+  ESCALATED(assert(0==kill(pid,SIGINT)));
+  pid=-1;
   reset();
   netlink_end();
 
