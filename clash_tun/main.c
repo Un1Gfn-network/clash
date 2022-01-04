@@ -19,6 +19,9 @@
 #include "./profile.h"
 #include "./shadowsocks2.h"
 
+#define DNSOLD "/etc/systemd/resolved.conf.d/ali."
+#define DNSNEW "/etc/systemd/resolved.conf.d/google."
+
 static char gw[INET_ADDRSTRLEN]={};
 
 static inline pid_t start_tun2socks(){
@@ -148,8 +151,12 @@ int main(const int argc,const char **__restrict argv){
 
   // (1/3) DNS
   bus_init();
-  bus_call(&f_setdns);
-  bus_call(&f_flush);
+  ESCALATED(
+    assert(0==rename(DNSOLD"conf",DNSOLD"bak"));
+    assert(0==rename(DNSNEW"bak",DNSNEW"conf"));
+  );
+  bus_call(&resolved_restartservice);
+  bus_call(&resolved_flushcache);
 
   // (2/3) Shadowsocks
   kill_sync("clash");
@@ -183,8 +190,12 @@ int main(const int argc,const char **__restrict argv){
   stop_ss();
 
   // (1/3) DNS
-  bus_call(&f_resetdns);
-  bus_call(&f_flush);
+  ESCALATED(
+    assert(0==rename(DNSNEW"conf",DNSNEW"bak"));
+    assert(0==rename(DNSOLD"bak",DNSOLD"conf"));
+  );
+  bus_call(&resolved_restartservice);
+  bus_call(&resolved_flushcache);
   bus_end();
 
   // assert(profile_loaded());

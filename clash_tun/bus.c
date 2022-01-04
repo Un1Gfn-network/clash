@@ -10,16 +10,6 @@
 #include "./bus.h"
 #include "./privilege.h"
 
-// service destination
-#define SERVICE "org.freedesktop.resolve1"
-// path to object
-#define OBJECT "/org/freedesktop/resolve1"
-// interface
-#define INTERFACE "org.freedesktop.resolve1.Manager"
-// method
-#define METHOD_FLUSHCACHE "FlushCaches"
-#define METHOD_SETDNS "SetLinkDNS"
-
 static sd_bus *bus=NULL;
 static unsigned ifi=0;
 
@@ -38,49 +28,38 @@ void bus_end(){
   ifi=0;
 }
 
-void f_flush(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
+// https://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html
+/*
+gdbus introspect --system \
+  --dest org.freedesktop.systemd1 \
+  --object-path /org/freedesktop/systemd1 \
+
+*/
+void resolved_restartservice(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
   assert(0<=sd_bus_call_method(
     bus,
-    SERVICE,OBJECT,INTERFACE,METHOD_FLUSHCACHE,
+    "org.freedesktop.systemd1", // service destination
+    "/org/freedesktop/systemd1", // path to object
+    "org.freedesktop.systemd1.Manager", // interface
+    "RestartUnit", // method
+    ep,
+    mp,
+    "ss",
+    "systemd-resolved.service", // arg1 - name
+    "replace" // arg2 - mode // systemctl(1) "--job-mode="
+  ));
+}
+
+void resolved_flushcache(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
+  assert(0<=sd_bus_call_method(
+    bus,
+    "org.freedesktop.resolve1", // service destination
+    "/org/freedesktop/resolve1", // path to object
+    "org.freedesktop.resolve1.Manager", // interface
+    "FlushCaches", // method
     ep,
     mp,
     ""
-  ));
-}
-
-void f_setdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
-  assert(0<=sd_bus_call_method(
-    bus,
-    SERVICE,OBJECT,INTERFACE,METHOD_SETDNS,
-    ep,
-    mp,
-    "ia(iay)",
-    (int32_t)ifi,
-    2,
-      AF_INET,
-      4,
-        8,8,8,8,
-      AF_INET,
-      4,
-        8,8,4,4
-  ));
-}
-
-void f_resetdns(sd_bus_error *__restrict const ep,sd_bus_message **__restrict mp){
-  assert(0<=sd_bus_call_method(
-    bus,
-    SERVICE,OBJECT,INTERFACE,METHOD_SETDNS,
-    ep,
-    mp,
-    "ia(iay)",
-    (int32_t)ifi,
-    2,
-      AF_INET,
-      4,
-        223,5,5,5,
-      AF_INET,
-      4,
-        223,6,6,6
   ));
 }
 
@@ -94,7 +73,8 @@ void bus_call(void(*f)(sd_bus_error *__restrict const ep,sd_bus_message **__rest
   sd_bus_error_free(&e);
   e=SD_BUS_ERROR_NULL;
 
-  assert(sd_bus_message_is_empty(m));
+  // https://www.freedesktop.org/software/systemd/man/sd_bus_message_read.html
+  // assert(sd_bus_message_is_empty(m));
   sd_bus_message_unref(m);
   m=NULL;
 
