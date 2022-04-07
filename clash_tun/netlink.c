@@ -370,7 +370,7 @@ void netlink_get_gateway(char *__restrict const s){
           // assert(0==strcmp(s,"192.168.1.1"));
           break;
         case RTA_OIF: // rtnetlink(7) output interface index
-          assert(2==*((int*)RTA_DATA(rta)));
+          assert(2==*((int*)RTA_DATA(rta))||3==*((int*)RTA_DATA(rta)));
           break;
         case RTA_PREFSRC:
           break;
