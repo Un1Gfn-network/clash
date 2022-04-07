@@ -30,7 +30,7 @@ RAW=raw.yaml
 # shellcheck source=/home/darren/.clash/uri.rc
 source ~/.clash/uri.rc
 [ -n "$ssrcloud_clash" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-# [ -n "$rixcloud_uri" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+[ -n "$dler_clash" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
 
 function clear_tmp {
   pushd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
@@ -60,21 +60,81 @@ function browser_download {
   echo
 }
 
-function update_clash {
+function clash_convert_dler {
 
-  local uri="$1_clash"
+  ((1==$#)) || { echo "${FUNCNAME[0]}: there should be one and only one parameter, which should be the file to convert"; exit 1; }
+
+  cmp -n 22 <(cat <<____EOF | sed 's/^    //g' | head --bytes=-1
+    ---
+    proxies:
+    - server:
+____EOF
+  ) "$1" || { echo "${FUNCNAME[0]}: ill-formed header in '$1'"; exit 1; }
+
+  cat <<__EOF | sed 's/^  //g'
+  port: 8080
+  socks-port: 1080
+  allow-lan: true
+  bind-address: '*'
+  mode: global
+  log-level: info
+  ipv6: false
+  external-controller: 0.0.0.0:9090
+  external-ui: /tmp/yacd-gh-pages
+  secret:
+  profile:
+    store-selected: true
+  dns:
+    enable: false
+  proxies:
+__EOF
+
+  tail --lines=+3 "$1" | head --lines=-1 | sed \
+    -e 's,\\U0001F1E8\\U0001F1F3,\\U0001F1F9\\U0001F1FC,g' \
+    -e 's,\\U0001F1ED\\U0001F1F0,\\U0001F5BE\\U00002612,g'
+
+}
+
+function update_dler {
+
+  local provider=dler
+  local uri="${provider}_clash"
   browser_download "${!uri}" "/tmp/raw.yaml"
-  diff -u --color=always {"$DOTDIR/$1",/tmp}/raw.yaml || echo
+  diff -u --color=always {"$DOTDIR/$provider",/tmp}/raw.yaml || echo
+
+  cd /tmp || exit 1
+  read -rp "clash_run will convert yaml as follows ... "
+  echo
+  # clash_convert_dler raw.yaml
+  clash_convert_dler raw.yaml | less -SRM +%
+  echo
+  read -rp 'ok? '
+  echo
+
+  cd "$DOTDIR/$provider" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  mv -fv raw.yaml "raw.yaml.$(date --iso-8601=minute).$(uuidgen)"
+  cp -v /tmp/raw.yaml raw.yaml
+  echo
+
+}
+
+function update_ssrcloud {
+
+  local provider=ssrcloud
+  local uri="${provider}_clash"
+  browser_download "${!uri}" "/tmp/raw.yaml"
+  diff -u --color=always {"$DOTDIR/$provider",/tmp}/raw.yaml || echo
 
   cd /tmp || exit 1
   read -rp "clash_run will convert yaml as follows ... "
   echo
   clash_convert <raw.yaml | less -SRM +%
   echo
+  exit 1
   read -rp 'ok? '
   echo
 
-  cd "$DOTDIR/$1" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  cd "$DOTDIR/$provider" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
   mv -fv raw.yaml "raw.yaml.$(date --iso-8601=minute).$(uuidgen)"
   cp -v /tmp/raw.yaml raw.yaml
   echo
@@ -111,6 +171,49 @@ function update_shadowrocket {
 
 }
 
+function clash_run {
+
+  # Prepare
+  # if [ "$#" -ne 1 ]; then
+  #   echo -e "\n  $(basename "$0") <provider>\n"
+  #   exit 1
+  # fi
+  echo
+
+  # set -- "ssrcloud"
+  clear_tmp
+  echo
+
+  cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  rm -rf "$ZIPROOT"
+  unzip "$YCDIR/$ZIP"
+  echo
+
+  [ -e "$MERGEDIR" ] && { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  mkdir -v "$MERGEDIR"
+  [ -e "$DOTDIR/$1/$CTDB" ] && { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  cp -v "$YCDIR/$CTDB" "$MERGEDIR/$CTDB"
+  echo
+  case "$1" in
+  "dler")
+    clash_convert_dler "$DOTDIR/$1/$RAW" >"$MERGEDIR/config.yaml" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  ;;
+  "ssrcloud")
+    clash_convert <"$DOTDIR/$1/$RAW" >"$MERGEDIR/config.yaml" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  ;;
+  *)
+    { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  ;;
+  esac
+  echo
+
+  # shellcheck disable=SC2093
+  exec clash -d "$MERGEDIR"
+
+  # Should not reach here
+  { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+}
+
 {
 
   cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
@@ -118,38 +221,9 @@ function update_shadowrocket {
   case "$(basename "$0")" in
 
   "clash_run")
-
-    # Prepare
-    # if [ "$#" -ne 1 ]; then
-    #   echo -e "\n  $(basename "$0") <provider>\n"
-    #   exit 1
-    # fi
-    echo
-
-    [ "$#" -eq 0 ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    set -- "ssrcloud"
+    ((1==$#)) || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
     [ -e "$DOTDIR/$1" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-
-    clear_tmp
-    echo
-
-    cd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    rm -rf "$ZIPROOT"
-    unzip "$YCDIR/$ZIP"
-    echo
-
-    [ -e "$MERGEDIR" ] && { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    mkdir -v "$MERGEDIR"
-    [ -e "$DOTDIR/$1/$CTDB" ] && { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    cp -v "$YCDIR/$CTDB" "$MERGEDIR/$CTDB"
-    echo
-    clash_convert <"$DOTDIR/$1/$RAW" >"$MERGEDIR/config.yaml" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-    echo
-
-    exec clash -d "$MERGEDIR"
-
-    # Should not reach here
-    { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+    clash_run "$1"
     ;;
 
   "clash_update")
@@ -179,12 +253,17 @@ function update_shadowrocket {
       exit 0
       ;;
 
-    # "rixcloud"|"ssrcloud")
     "ssrcloud")
-
       echo
-      update_clash "$1"
-      update_shadowrocket "$1"
+      update_ssrcloud
+      update_shadowrocket ssrcloud
+      exit 0
+      ;;
+
+    "dler")
+      echo
+      update_dler
+      # update_shadowrocket dler
       exit 0
       ;;
 
