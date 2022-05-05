@@ -130,7 +130,6 @@ function update_ssrcloud {
   echo
   clash_convert <raw.yaml | less -SRM +%
   echo
-  exit 1
   read -rp 'ok? '
   echo
 
@@ -205,6 +204,7 @@ function clash_run {
     { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
   ;;
   esac
+  opencc -i "$MERGEDIR/config.yaml" -c /usr/share/opencc/s2t.json | sponge "$MERGEDIR/config.yaml"
   echo
 
   # shellcheck disable=SC2093
