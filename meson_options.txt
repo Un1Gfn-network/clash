@@ -1,0 +1,2 @@
+# https://mesonbuild.com/Build-options.html
+option('RESTFUL_PORT', type: 'integer', min: 1024, max: 65535, value: 9090, description: 'external-controller')

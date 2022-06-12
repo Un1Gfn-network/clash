@@ -1,5 +1,3 @@
-#include <config.h> // RESTFUL_PORT
-
 #include <assert.h>
 #include <curl/curl.h>
 #include <json.h>
@@ -9,12 +7,14 @@
 
 #include <libclash.h> // Header of resolv.c restful.c yaml2profile.c
 
-#define SZ 1024
-
 // https://gcc.gnu.org/onlinedocs/gcc-4.8.5/cpp/Stringification.html
 #define xstr(a) str(a)
 #define str(a) #a
 #define json_object_put2(J) assert(1==json_object_put(J));J=NULL
+
+#define SZ 1024
+
+static_assert(9090==RESTFUL_PORT);
 
 static char *buf=NULL;
 static size_t sz=0;

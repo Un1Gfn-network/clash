@@ -1,9 +1,9 @@
+// #include <readline/readline.h> // readline()
 #include <assert.h>
 #include <curl/curl.h> // curl_easy_escape()
 #include <libclash.h>
 #include <openssl/evp.h> // EVP_EncodeBlock()
 #include <qrencode.h>
-#include <readline/readline.h> // readline()
 #include <stdio_ext.h> // __fpurge()
 #include <string.h>
 #include <sys/stat.h> // stat()
