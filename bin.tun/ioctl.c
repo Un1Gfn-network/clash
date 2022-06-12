@@ -6,8 +6,8 @@
 #include <string.h>
 #include <unistd.h> // close()
 
+// #include <bsd/stdlib.h> // humanize_number(3bsd)
 #include <arpa/inet.h> // inet_ntop
-#include <bsd/stdlib.h> // humanize_number(3bsd)
 #include <ifaddrs.h> // getifaddrs()
 #include <linux/if_link.h> // struct rtnl_link_stats
 #include <linux/if_packet.h> // struct sockaddr_ll

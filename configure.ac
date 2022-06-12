@@ -9,12 +9,6 @@ dnl https://github.com/haishanh/yacd/blob/master/src/index.template.ejs
 dnl <div id="app" data-base-url="http://127.0.0.1:9090"></div>
 dnl https://clash.gitbook.io/doc/restful-api
 
-PKG_CHECK_MODULES(LIBBSD, libbsd >= 0.10.0)
-PKG_CHECK_MODULES(LIBPROCPS, libprocps = 3.3.17)
-PKG_CHECK_MODULES(LIBSYSTEMD, libsystemd >= 248)
-PKG_CHECK_MODULES(SSLIBEV, shadowsocks-libev = 3.3.5)
-PKG_CHECK_MODULES(READLINE, readline = 8.1)
-
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h stdint.h strings.h sys/ioctl.h sys/socket.h unistd.h])
 AC_CHECK_FUNCS([bzero dup2 inet_ntoa memset regcomp setlocale socket strdup strerror strstr])
 
