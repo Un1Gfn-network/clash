@@ -6,7 +6,6 @@ LIBCLASHSO = shared_library('clash',
   'yaml2profile.c',
   dependencies: [JSONC, CURL, YAML],
   implicit_include_directories: false,
-  include_directories: [INC],
   install: true,
 )
 
