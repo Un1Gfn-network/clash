@@ -14,13 +14,27 @@ project('clash',
                                    run_command('git', 'rev-parse', '--short', 'HEAD', capture: true, check: true).stdout().strip()))
 
 # https://mesonbuild.com/Reference-manual_builtin_meson.html#mesonget_compiler
-assert('gcc'==meson.get_compiler('c').get_id())
-message(meson.get_compiler('c').get_id())
-message(meson.get_compiler('c').get_linker_id())
+CC=meson.get_compiler('c')
+assert('gcc'==CC.get_id())
+assert('ld.bfd'==CC.get_linker_id())
+# message(CC.get_id())
+# message(CC.get_linker_id())
+
+foreach h: ['arpa/inet.h', 'fcntl.h', 'netdb.h', 'netinet/in.h', 'stdint.h', 'strings.h', 'sys/ioctl.h', 'sys/socket.h', 'unistd.h']
+  CC.has_header(h, required: true)
+endforeach
+foreach f: ['bzero', 'dup2', 'inet_ntoa', 'memset', 'regcomp', 'setlocale', 'socket', 'strdup', 'strerror', 'strstr']
+  assert(CC.has_function(f))
+endforeach
+CC.has_header_symbol('netinet/in.h', 'INET_ADDRSTRLEN', required: true)
+CC.has_header_symbol('arpa/inet.h', 'INET_ADDRSTRLEN', required: true)
 
 # https://mesonbuild.com/Reference-manual_functions.html#get_option
-# # https://mesonbuild.com/Adding-arguments.html
+# https://mesonbuild.com/Adding-arguments.html
 # https://mesonbuild.com/Syntax.html#string-formatting
+# https://clash.gitbook.io/doc/restful-api
+# https://github.com/haishanh/yacd/blob/master/src/index.template.ejs
+# <div id="app" data-base-url="http://127.0.0.1:9090"></div>
 RESTFUL_PORT = get_option('RESTFUL_PORT')
 add_global_arguments(f'-DRESTFUL_PORT=@RESTFUL_PORT@', language: 'c')
 add_global_arguments(f'-D_GNU_SOURCE',
@@ -37,6 +51,7 @@ add_global_arguments(f'-D_GNU_SOURCE',
 add_global_arguments('-I@0@'.format(meson.current_source_dir()/'include'), language: 'c')
 
 # https://mesonbuild.com/Reference-manual_functions.html#dependency
+THREAD = dependency('threads')
 BSD = dependency('libbsd', version: '>=0.10.0')
 CRYPTO = dependency('libcrypto', version: '>=1.1.1k')
 CURL = dependency('libcurl', version: '>=7.76.0')
