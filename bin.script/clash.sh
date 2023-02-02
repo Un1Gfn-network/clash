@@ -1,53 +1,84 @@
-#!/bin/bash
-# Edit this file in ~/clash/clash_misc/clash.sh
+#!/bin/bash -x
 
-# # shellcheck -x ~/clash/clash_misc/clash.sh
-# pushd ~/clash/build/clash_misc/ && make clean all && sudo make uninstall install && popd
+# after modification, copy from
+#   /usr/local/bin/clash.sh
+# to
+#   ~/clash/bin.script/clash.sh
 
-# Deps
-# pacman -Syu --needed unzip wget
+DOTDIR="$HOME/.clash"
+YCDIR="$HOME/.clash/yC"
+MERGEDIR=/tmp/clash
+RAW=raw.yaml
 
 # shellcheck disable=SC2034
 CTDBURL=https://github.com/Dreamacro/maxmind-geoip/releases/latest/download/Country.mmdb
 CTDB=Country.mmdb
 
-# shellcheck disable=SC2034
-ZIPURL=https://github.com/haishanh/yacd/archive/gh-pages.zip
-ZIP=yacd-gh-pages.zip
-ZIPROOT=yacd-gh-pages
+# # ZIPURL=https://github.com/haishanh/yacd/archive/refs/heads/gh-pages.zip
+# ZIPURL=https://github.com/haishanh/yacd/archive/gh-pages.zip
+# ZIP=yacd-gh-pages-master.zip
+# ZIPROOT=yacd-gh-pages
 
-# # https://github.com/Dreamacro/clash-dashboard
-# # ZIPURL="https://github.com/Dreamacro/clash-dashboard/archive/gh-pages.zip"
-# ZIPURL="https://codeload.github.com/Dreamacro/clash-dashboard/zip/refs/heads/gh-pages"
-# ZIP="clash-dashboard-gh-pages.zip"
-# ZIPROOT="clash-dashboard-gh-pages"
+# ZIPURL=https://github.com/haishanh/yacd/releases/download/v0.3.8/yacd.tar.xz
+# ZIP=yacd-gh-pages-0.3.8.tar.xz
+# ZIPROOT=yacd-0.3.8
 
-DOTDIR=~/.clash
-YCDIR=~/.clash/yC
-MERGEDIR=/tmp/clash
-RAW=raw.yaml
+# https://github.com/Dreamacro/clash-dashboard
+# ZIPURL="https://github.com/Dreamacro/clash-dashboard/archive/gh-pages.zip"
+ZIPURL="https://codeload.github.com/Dreamacro/clash-dashboard/zip/refs/heads/gh-pages"
+ZIP="clash-dashboard-gh-pages.zip"
+ZIPROOT="clash-dashboard-gh-pages"
+
+# # clear site data with this placeholder page 
+# # copy-paste-execute function make_placeholder_zip
+# # ZIPURL="file://$(realpath "$YCDIR")/clash.sb6jzd.zip"
+# ZIP=clash.sb6jzd.zip
+# ZIPROOT=clash.sb6jzd
 
 # shellcheck source=/home/darren/.clash/uri.rc
 source ~/.clash/uri.rc
-[ -n "$ssrcloud_clash" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-[ -n "$dler_clash" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+[ -n "$ssrcloud_clash" ] || { echo "err x9pfhm"; exit 1; }
+[ -n "$dler_clash" ] || { echo "err gjwgb8"; exit 1; }
+
+function make_placeholder_zip {
+  mkdir /tmp/clash.sb6jzd
+  cat <<__EOF >/tmp/clash.sb6jzd/index.html
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <pre>
+      This is a placeholder.
+      Click DevTools.Application.Storage.ClearSiteData now.
+    </pre>
+  </body>
+  </html>
+__EOF
+  pushd /tmp
+  YCDIR="$HOME/.clash/yC"
+  rm -fv "$YCDIR/clash.sb6jzd.zip"
+  zip -rmT "$YCDIR/clash.sb6jzd.zip" clash.sb6jzd
+  popd
+}
 
 function clear_tmp {
-  pushd /tmp || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  pushd /tmp || { echo "err dh0p0q"; exit 1; }
   # https://www.shellcheck.net/wiki/SC2144
   for i in config*.yaml; do
-    [ "$i" = config\*.yaml ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+    [ "$i" = config\*.yaml ] || { echo "err zfkkz9"; exit 1; }
   done
   { /bin/false \
     || [ -e General.yml ] \
     || [ -e rules.yml ] \
     || [ -e clash.yml ] \
-  ; } && { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  ; } && { echo "err h097w5"; exit 1; }
   rm -rfv "$ZIPROOT"  # clash_run
   rm -rfv "$ZIP"      # clash_update yC
   rm -rfv "$CTDB"     # clash_update yC
   rm -rfv "$MERGEDIR" # clash_run
-  popd || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+  popd || { echo "err ofil7w"; exit 1; }
 }
 
 function browser_download {
@@ -80,7 +111,7 @@ ____EOF
   log-level: info
   ipv6: false
   external-controller: 0.0.0.0:9090
-  external-ui: /tmp/yacd-gh-pages
+  external-ui: /tmp/$ZIPROOT
   secret:
   profile:
     store-selected: true
@@ -155,9 +186,9 @@ function update_shadowrocket {
     -e 's| +|.|g' \
     shadowrocket_2_raw
   base64 -w0 shadowrocket_2_raw >shadowrocket_3_rebase64
-  mv -v shadowrocket_3_rebase64 /home/darren/cgi/cgi-tmp/shadowrocket_3_rebase64
+  mv -v shadowrocket_3_rebase64 /home/darren/cgi/00-cgi-tmp/shadowrocket_3_rebase64
   echo
-  local POTATSO="http://192.168.0.223/cgi-tmp/shadowrocket_3_rebase64"
+  local POTATSO="http://192.168.0.223/00-cgi-tmp/shadowrocket_3_rebase64"
   echo "$POTATSO"
   echo
   qrencode -tUTF8 "$POTATSO"
@@ -220,6 +251,22 @@ function clash_run {
 
   case "$(basename "$0")" in
 
+  "clash_x200")
+    echo
+    ssh root@x200 rm -rfv /CLASH /YACD
+    echo
+    scp -r /tmp/clash root@x200:/CLASH
+    scp -r /tmp/yacd-gh-pages root@x200:/YACD
+    echo
+    ssh root@x200 sed -i.orig /CLASH/config.yaml -e 's_/tmp/yacd-gh-pages_/YACD_g'
+    ssh root@x200 diff --color=always -u /CLASH/config.yaml{.orig,}
+    echo
+    echo restart clash.zft3bg.service ...
+    ssh root@x200 systemctl restart clash.zft3bg.service
+    ssh root@x200 journalctl -b -f -u clash.zft3bg.service
+    echo
+    ;;
+
   "clash_run")
     ((1==$#)) || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
     [ -e "$DOTDIR/$1" ] || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
@@ -246,7 +293,7 @@ function clash_run {
         [ -e "/tmp/${!i}" ] && { rm -v "/tmp/${!i}"; echo; }
         cd "$YCDIR/" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
         wget -O "/tmp/${!i}" "${!j}" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
-        mv -v "${!i}" "${!i}.$(date --iso-8601=minute).$(uuidgen)" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
+        mv -v "${!i}" "${!i}.$(date --iso-8601=minute).$(uuidgen)"
         mv -v "/tmp/${!i}" "${!i}" || { echo "${BASH_SOURCE[0]}:$LINENO:${FUNCNAME[0]}: err"; exit 1; }
         echo
       done

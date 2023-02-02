@@ -37,7 +37,7 @@ CC.has_header_symbol('arpa/inet.h', 'INET_ADDRSTRLEN', required: true)
 # <div id="app" data-base-url="http://127.0.0.1:9090"></div>
 RESTFUL_PORT = get_option('RESTFUL_PORT')
 add_global_arguments(f'-DRESTFUL_PORT=@RESTFUL_PORT@', language: 'c')
-add_global_arguments(f'-D_GNU_SOURCE',
+add_global_arguments('-D_GNU_SOURCE',
                      '-Wno-unused-parameter',
                      '-Winline',
                      '-Wshadow',
@@ -59,7 +59,7 @@ GLIB = dependency('glib-2.0', version: '>=2.68.1')
 JSONC = dependency('json-c', version: '>=0.15')
 PROCPS = dependency('libprocps', version: '3.3.17')
 QRENCODE = dependency('libqrencode', version: '4.1.1')
-READLINE = dependency('readline', version: '8.1')
+READLINE = dependency('readline', version: '>=8.1')
 SSLIBEV = dependency('shadowsocks-libev', version: '3.3.5')
 SYSTEMD = dependency('libsystemd', version: '>=248')
 YAML = dependency('yaml-0.1', version: '0.2.5')
